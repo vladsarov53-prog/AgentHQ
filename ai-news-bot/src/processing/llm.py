@@ -77,9 +77,17 @@ class LLMProcessor:
             importance = item.get("importance", 5)
             importance = max(1, min(10, importance))
 
+            # Combine summary + why_matters into one field for storage
+            summary = item.get("summary_ru", "")
+            why = item.get("why_matters", "")
+            if why and not why.startswith("-"):
+                why = f"- {why}"
+            full_summary = f"{summary}\n{why}".strip() if why else summary
+
             validated.append({
                 "article_index": item.get("article_index", 0),
-                "summary_ru": item.get("summary_ru", ""),
+                "title_ru": item.get("title_ru", ""),
+                "summary_ru": full_summary,
                 "tags": tags,
                 "importance": importance,
             })

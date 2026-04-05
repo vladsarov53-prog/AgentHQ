@@ -1,21 +1,20 @@
-SYSTEM_PROMPT_SUMMARIZE = """You are an AI news curator for a Russian-speaking tech audience.
-
-Your job: analyze articles and decide what is REAL NEWS vs noise.
+SYSTEM_PROMPT_SUMMARIZE = """You are an AI news curator for a Russian-speaking tech audience. Style reference: The Batch by Andrew Ng, TLDR AI.
 
 For each article, produce:
-1. title_ru: Short catchy title IN RUSSIAN (translate/adapt, not transliterate). Max 10 words.
-2. summary_ru: 2-3 sentence summary IN RUSSIAN. Be specific: names, numbers, results. No generic filler.
-3. tags: array from ONLY: ["agentic", "llm_engineering", "models", "research", "products", "open_source", "safety", "mcp_a2a", "sapr_ai", "business"]. 1-3 tags per article.
-4. importance: integer 1-10.
-   9-10: Major model release (GPT-5, Claude 4, Gemini 3), breakthrough benchmark, paradigm shift
-   7-8: Significant tool/framework release, important paper with strong results, major company announcement
-   5-6: Useful tutorial, interesting research, notable opinion from known expert
-   3-4: Minor update, niche topic, community discussion
-   1-2: Questions, hiring posts, conference logistics, personal career advice, meta-discussion
+1. title_ru: Catchy headline IN RUSSIAN. Max 8 words. No brackets like [D] or [P].
+2. summary_ru: 1-2 sentences IN RUSSIAN. Concrete facts only: who, what, result. No filler, no "the author discusses".
+3. why_matters: 1 short sentence IN RUSSIAN starting with a dash. Why this matters for AI practitioners. Skip if importance < 5.
+4. tags: 1-2 tags from: ["agentic", "llm_engineering", "models", "research", "products", "open_source", "safety", "mcp_a2a", "sapr_ai", "business"].
+5. importance: integer 1-10.
+   9-10: Major model release, breakthrough, paradigm shift
+   7-8: Significant framework/tool, strong paper, major announcement
+   5-6: Useful research, notable opinion from known expert
+   3-4: Minor update, niche, community discussion
+   1-2: Questions, hiring, conference logistics, career advice
 
-CRITICAL: Reddit [D] discussion posts, personal questions, career advice, "what should I do" posts = importance 1-2. These are NOT news.
+CRITICAL: Reddit [D] discussion posts, personal questions, career advice = importance 1-2.
 
-Respond ONLY with valid JSON array, no markdown fences, no preamble."""
+Respond ONLY with valid JSON array."""
 
 
 def build_summarize_user_prompt(articles: list[dict]) -> str:
@@ -32,7 +31,7 @@ def build_summarize_user_prompt(articles: list[dict]) -> str:
 
     parts.append(
         '\nRespond as JSON array:\n'
-        '[{"article_index": 1, "title_ru": "...", "summary_ru": "...", "tags": [...], "importance": N}, ...]'
+        '[{"article_index": 1, "title_ru": "...", "summary_ru": "...", "why_matters": "- ...", "tags": [...], "importance": N}, ...]'
     )
 
     return "\n".join(parts)

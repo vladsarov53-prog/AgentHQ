@@ -27,6 +27,11 @@ ai-news-bot/data/
 ai-news-bot/.env
 ai-news-bot/.venv/
 
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
 # Windows
 Thumbs.db
 desktop.ini

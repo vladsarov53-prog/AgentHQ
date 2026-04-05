@@ -74,14 +74,39 @@ async def insert_article(
 
 
 async def get_unprocessed_articles(db: Database, limit: int = 50) -> list[dict]:
+    # Get top N per source for diversity, then round-robin
     cursor = await db.conn.execute(
-        """SELECT * FROM articles
-           WHERE processed_at IS NULL
-           ORDER BY fetched_at ASC
-           LIMIT ?""",
-        (limit,),
+        "SELECT DISTINCT source_id FROM articles WHERE processed_at IS NULL"
     )
-    return [dict(row) for row in await cursor.fetchall()]
+    source_ids = [row["source_id"] for row in await cursor.fetchall()]
+
+    by_source: dict[int, list] = {}
+    per_source = max(3, limit // max(len(source_ids), 1))
+    for sid in source_ids:
+        cursor = await db.conn.execute(
+            """SELECT * FROM articles
+               WHERE processed_at IS NULL AND source_id = ?
+               ORDER BY fetched_at ASC LIMIT ?""",
+            (sid, per_source),
+        )
+        by_source[sid] = [dict(row) for row in await cursor.fetchall()]
+
+    # Round-robin
+    mixed: list[dict] = []
+    iterators = {sid: iter(rows) for sid, rows in by_source.items()}
+    while len(mixed) < limit and iterators:
+        exhausted = []
+        for sid in list(iterators):
+            if len(mixed) >= limit:
+                break
+            try:
+                mixed.append(next(iterators[sid]))
+            except StopIteration:
+                exhausted.append(sid)
+        for sid in exhausted:
+            del iterators[sid]
+
+    return mixed
 
 
 async def update_article_processed(

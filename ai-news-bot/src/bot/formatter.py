@@ -29,39 +29,56 @@ TAG_EMOJI = {
     "business": "💼",
 }
 
+MONTHS_RU = {
+    1: "января", 2: "февраля", 3: "марта", 4: "апреля",
+    5: "мая", 6: "июня", 7: "июля", 8: "августа",
+    9: "сентября", 10: "октября", 11: "ноября", 12: "декабря",
+}
+
 MAX_MESSAGE_LEN = 4000
+
+
+def _date_ru(date_str: str) -> str:
+    """Convert date to Russian format."""
+    from datetime import datetime
+    try:
+        dt = datetime.strptime(date_str, "%d %B %Y")
+        return f"{dt.day} {MONTHS_RU[dt.month]} {dt.year}"
+    except Exception:
+        return date_str
 
 
 def format_digest(articles: list[dict], date_str: str) -> list[str]:
     if not articles:
         return ["Новых AI-новостей пока нет. Попробуйте позже."]
 
-    # Filter out low-importance noise
+    # Filter out noise (importance < 4)
     articles = [a for a in articles if a.get("importance_score", 0) >= 4]
 
     if not articles:
-        return ["Сегодня только мелкие обсуждения, значимых новостей нет."]
+        return ["Сегодня значимых новостей в AI не было."]
 
+    date_formatted = _date_ru(date_str)
     messages = []
-    current = f"📡 <b>AI-дайджест</b> | {escape(date_str)}\n"
+    current = f"📡 <b>AI-дайджест</b>  |  {escape(date_formatted)}\n"
 
-    # Important articles (importance >= 8)
+    # Split by importance
     important = [a for a in articles if a.get("importance_score", 0) >= 8]
     regular = [a for a in articles if 4 <= a.get("importance_score", 0) < 8]
 
+    # IMPORTANT section
     if important:
-        current += "\n🔥 <b>Главное</b>\n\n"
+        current += "\n🔥 <b>Главное</b>\n"
         for article in important:
-            current += _format_article(article, detailed=True) + "\n"
+            current += "\n" + _format_card(article) + "\n"
 
-    # Group regular by first tag
+    # Regular grouped by tag
     tag_groups: dict[str, list[dict]] = {}
     for article in regular:
         tags = _parse_tags(article.get("tags", "[]"))
         first_tag = tags[0] if tags else "other"
         tag_groups.setdefault(first_tag, []).append(article)
 
-    # Sort groups by total importance
     sorted_groups = sorted(
         tag_groups.items(),
         key=lambda x: sum(a.get("importance_score", 0) for a in x[1]),
@@ -71,9 +88,9 @@ def format_digest(articles: list[dict], date_str: str) -> list[str]:
     for tag_id, group in sorted_groups:
         emoji = TAG_EMOJI.get(tag_id, "📌")
         label = TAG_LABELS.get(tag_id, "Разное")
-        section = f"\n{emoji} <b>{escape(label)}</b>\n\n"
+        section = f"\n{emoji} <b>{escape(label)}</b>\n"
         for article in group:
-            section += _format_article(article, detailed=False) + "\n"
+            section += "\n" + _format_card(article) + "\n"
 
         if len(current) + len(section) > MAX_MESSAGE_LEN:
             messages.append(current)
@@ -82,8 +99,8 @@ def format_digest(articles: list[dict], date_str: str) -> list[str]:
             current += section
 
     total = len(important) + len(regular)
-    sources_count = len(set(a.get("source_name", "") for a in articles))
-    footer = f"\n📊 <i>{total} новостей из {sources_count} источников</i>"
+    sources = set(a.get("source_name", "") for a in articles)
+    footer = f"\n{'~' * 28}\n📊 {total} новостей  |  {len(sources)} источников"
 
     if len(current) + len(footer) > MAX_MESSAGE_LEN:
         messages.append(current)
@@ -96,52 +113,37 @@ def format_digest(articles: list[dict], date_str: str) -> list[str]:
 
 
 def format_instant(article: dict) -> str:
+    title = escape(_get_title_ru(article))
+    summary = escape(article.get("summary_ru", ""))
+    source = escape(article.get("source_name", ""))
+    url = escape(article.get("url", ""))
     tags = _parse_tags(article.get("tags", "[]"))
-    tag_line = "  ".join(
-        f"{TAG_EMOJI.get(t, '')} {TAG_LABELS.get(t, t)}"
-        for t in tags
-    )
-    title = _get_title_ru(article)
+    tag_line = " ".join(TAG_EMOJI.get(t, "") for t in tags)
 
     return (
-        f"🔥 <b>{escape(title)}</b>\n\n"
-        f"{escape(article.get('summary_ru', ''))}\n\n"
-        f"{tag_line}\n"
-        f"<a href=\"{escape(article['url'])}\">"
-        f"📎 {escape(article.get('source_name', 'Источник'))}</a>"
+        f"🔥 <b>{title}</b>\n\n"
+        f"{summary}\n\n"
+        f"{tag_line}  {source}\n"
+        f"<a href=\"{url}\">Читать</a>"
     )
 
 
-def _format_article(article: dict, detailed: bool) -> str:
+def _format_card(article: dict) -> str:
     title = escape(_get_title_ru(article))
     summary = escape(article.get("summary_ru", ""))
     url = escape(article.get("url", ""))
     source = escape(article.get("source_name", ""))
 
-    if detailed:
-        tags = _parse_tags(article.get("tags", "[]"))
-        tag_line = "  ".join(
-            f"{TAG_EMOJI.get(t, '')} {TAG_LABELS.get(t, t)}"
-            for t in tags
-        )
-        return (
-            f"▸ <b>{title}</b>\n"
-            f"{summary}\n"
-            f"{tag_line}\n"
-            f"<a href=\"{url}\">📎 {source}</a>\n"
-        )
-    else:
-        return (
-            f"▸ <b>{title}</b>\n"
-            f"  {summary}\n"
-            f"  <a href=\"{url}\">📎 {source}</a>\n"
-        )
+    return (
+        f"<b>{title}</b>\n"
+        f"{summary}\n"
+        f"<a href=\"{url}\">~ {source}</a>"
+    )
 
 
 def _get_title_ru(article: dict) -> str:
-    """Get Russian title if available, otherwise original."""
-    title_ru = article.get("title_ru", "")
-    if title_ru:
+    title_ru = article.get("title_ru") or ""
+    if title_ru and len(title_ru) > 3:
         return title_ru
     return article.get("title", "")
 
