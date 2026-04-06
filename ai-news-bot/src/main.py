@@ -116,7 +116,7 @@ async def main() -> None:
             pipeline=pipeline,
         )
     finally:
-        scheduler.shutdown(wait=False)
+        scheduler.shutdown(wait=True)
         await pipeline.close()
         await db.close()
         await bot.session.close()

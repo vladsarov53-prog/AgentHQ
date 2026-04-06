@@ -173,4 +173,5 @@ class Pipeline:
 
     async def close(self) -> None:
         await self._rss_fetcher.close()
+        await self._nitter_fetcher.close()
         await self._web_scraper.close()
