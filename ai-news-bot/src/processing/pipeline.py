@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime
 
 from ..config.settings import AppConfig
 from ..sources.rss import RSSFetcher
@@ -93,6 +94,14 @@ class Pipeline:
         return []
 
     async def _tier1_process(self, article, source: dict) -> bool:
+        # Hard filter: skip articles older than 48 hours
+        if article.published_at:
+            from datetime import timezone
+            pub = article.published_at if article.published_at.tzinfo else article.published_at.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - pub).total_seconds() / 3600
+            if age_hours > 48:
+                return False
+
         url_norm = normalize_url(article.url)
         content_hash = compute_content_hash(article.title, article.content)
 
