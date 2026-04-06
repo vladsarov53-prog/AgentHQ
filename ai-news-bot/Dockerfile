@@ -15,7 +15,8 @@ RUN pip install --no-cache-dir .
 COPY config.yaml .
 COPY src/ src/
 
-# Create data directories
-RUN mkdir -p data/logs
+# Persistent data on Railway volume
+ENV DATA_DIR=/data
+RUN mkdir -p /data/logs
 
 CMD ["python", "-m", "src.main"]

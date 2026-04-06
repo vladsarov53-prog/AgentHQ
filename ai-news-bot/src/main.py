@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
@@ -17,13 +18,18 @@ from .processing.pipeline import Pipeline
 from .bot.app import create_dispatcher
 from .bot.scheduler import setup_scheduler
 
+# Data directory: use DATA_DIR env var (for Railway volume) or default to ./data
+DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent.parent / "data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+(DATA_DIR / "logs").mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
         logging.FileHandler(
-            Path(__file__).parent.parent / "data" / "logs" / "bot.log",
+            DATA_DIR / "logs" / "bot.log",
             encoding="utf-8",
         ),
     ],
@@ -46,7 +52,7 @@ async def main() -> None:
     _validate_config(config)
 
     # Initialize database
-    db_path = Path(__file__).parent.parent / "data" / "news.db"
+    db_path = DATA_DIR / "news.db"
     db = await Database.create(db_path)
     await sync_sources(db, config.sources)
     logger.info("Database ready")
