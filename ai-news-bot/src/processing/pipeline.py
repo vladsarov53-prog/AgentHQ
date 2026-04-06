@@ -132,9 +132,9 @@ class Pipeline:
                 logger.warning("Daily LLM call limit reached (%d)", self._config.llm.max_daily_calls)
                 break
 
-            # Rate limit: pause between API calls (OpenRouter free tier)
+            # Rate limit: pause between API calls (OpenRouter free tier, 429 mitigation)
             if i > 0:
-                await asyncio.sleep(30)
+                await asyncio.sleep(60)
 
             results = await self._llm.summarize_batch(
                 batch,

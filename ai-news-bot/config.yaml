@@ -76,19 +76,8 @@ sources:
       feed_type: "rss"
       priority: "low"
 
-  twitter:
-    - name: "@AndrewYNg"
-      url: "https://nitter.net/AndrewYNg/rss"
-      feed_type: "nitter"
-      priority: "medium"
-    - name: "@RichardSocher"
-      url: "https://nitter.net/RichardSocher/rss"
-      feed_type: "nitter"
-      priority: "medium"
-    - name: "@ylecun"
-      url: "https://nitter.net/ylecun/rss"
-      feed_type: "nitter"
-      priority: "medium"
+  # twitter: disabled - all Nitter mirrors are dead (502/403 errors)
+  # Re-enable when a working Nitter alternative appears
 
   newsletters:
     - name: "The Batch"

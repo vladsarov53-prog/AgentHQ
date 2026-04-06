@@ -21,19 +21,25 @@ from .bot.scheduler import setup_scheduler
 # Data directory: use DATA_DIR env var (for Railway volume) or default to ./data
 DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent.parent / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-(DATA_DIR / "logs").mkdir(parents=True, exist_ok=True)
+
+# In containers (Railway), stdout is captured automatically - no file logging needed
+_handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+if not os.environ.get("DATA_DIR"):
+    # Local dev: also log to file
+    (DATA_DIR / "logs").mkdir(parents=True, exist_ok=True)
+    _handlers.append(logging.FileHandler(
+        DATA_DIR / "logs" / "bot.log", encoding="utf-8",
+    ))
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(
-            DATA_DIR / "logs" / "bot.log",
-            encoding="utf-8",
-        ),
-    ],
+    handlers=_handlers,
 )
+# Suppress noisy httpx request logs (every GET/POST logged at INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 _shutdown_event: asyncio.Event | None = None
@@ -95,6 +101,10 @@ async def main() -> None:
             asyncio.get_running_loop().add_signal_handler(sig, _signal_handler)
         except NotImplementedError:
             signal.signal(sig, _signal_handler)
+
+    # Drop pending updates and webhook before polling (critical for clean start)
+    await bot.delete_webhook(drop_pending_updates=True)
+    logger.info("Webhook cleared, pending updates dropped")
 
     # Start polling
     try:

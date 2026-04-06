@@ -147,8 +147,12 @@ class LLMProcessor:
                 return response
             except Exception as e:
                 if "429" in str(e) and attempt < retries - 1:
-                    wait = 20 * (attempt + 1)
+                    wait = 30 * (2 ** attempt)  # exponential backoff: 30s, 60s, 120s
                     logger.warning("Rate limited, waiting %ds (attempt %d/%d)", wait, attempt + 1, retries)
+                    await asyncio.sleep(wait)
+                elif attempt < retries - 1 and ("timeout" in str(e).lower() or "connection" in str(e).lower()):
+                    wait = 10 * (attempt + 1)
+                    logger.warning("Network error, retrying in %ds: %s", wait, e)
                     await asyncio.sleep(wait)
                 else:
                     logger.error("API error: %s", e)
