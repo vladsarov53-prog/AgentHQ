@@ -45,6 +45,17 @@ async def hash_exists(db: Database, content_hash: str) -> bool:
     return await cursor.fetchone() is not None
 
 
+async def get_recent_titles(db: Database, hours: int = 48) -> list[dict]:
+    """Get titles of recent articles for semantic dedup."""
+    cursor = await db.conn.execute(
+        """SELECT id, title, source_name, importance_score
+           FROM articles
+           WHERE fetched_at >= datetime('now', ? || ' hours')""",
+        (f"-{hours}",),
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
 async def insert_article(
     db: Database,
     url: str,
@@ -56,14 +67,15 @@ async def insert_article(
     source_name: str,
     importance_score: int = 5,
     published_at: str | None = None,
+    image_url: str | None = None,
 ) -> int | None:
     cursor = await db.conn.execute(
         """INSERT OR IGNORE INTO articles
            (url, url_normalized, content_hash, title, content_raw,
-            source_id, source_name, importance_score, published_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            source_id, source_name, importance_score, published_at, image_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (url, url_normalized, content_hash, title, content_raw,
-         source_id, source_name, importance_score, published_at),
+         source_id, source_name, importance_score, published_at, image_url),
     )
     await db.conn.commit()
     if cursor.rowcount > 0:

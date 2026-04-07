@@ -97,6 +97,16 @@ class WebScraperFetcher(BaseFetcher):
 
             content = el.get_text(separator=" ", strip=True)[:3000]
 
+            # Extract image from article element or nearby
+            image_url = None
+            img_el = el.select_one("img[src]")
+            if img_el:
+                img_src = img_el.get("src", "")
+                if img_src and img_src.startswith("/"):
+                    img_src = base_url + img_src
+                if img_src and img_src.startswith("http"):
+                    image_url = img_src
+
             articles.append(RawArticle(
                 url=url or source["url"],
                 title=title,
@@ -104,6 +114,7 @@ class WebScraperFetcher(BaseFetcher):
                 published_at=datetime.now(timezone.utc),
                 source_name=source["name"],
                 source_id=source["id"],
+                image_url=image_url,
             ))
 
         logger.info("Scraped %d articles from %s", len(articles), source["name"])

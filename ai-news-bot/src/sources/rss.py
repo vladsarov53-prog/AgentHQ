@@ -63,6 +63,8 @@ class RSSFetcher(BaseFetcher):
 
             published = self._parse_date(entry)
 
+            image_url = self._extract_image(entry)
+
             articles.append(RawArticle(
                 url=url,
                 title=title,
@@ -70,6 +72,7 @@ class RSSFetcher(BaseFetcher):
                 published_at=published,
                 source_name=source["name"],
                 source_id=source["id"],
+                image_url=image_url,
             ))
 
         logger.info("Fetched %d articles from %s", len(articles), source["name"])
@@ -98,6 +101,43 @@ class RSSFetcher(BaseFetcher):
             # Skip if the link points back to reddit itself
             if "reddit.com" not in link and "redd.it" not in link:
                 return link
+        return None
+
+    @staticmethod
+    def _extract_image(entry) -> str | None:
+        """Extract image URL from RSS entry (media:content, enclosure, or inline img)."""
+        # media:content / media:thumbnail (feedparser stores as media_content / media_thumbnail)
+        for media_list in (entry.get("media_content", []), entry.get("media_thumbnail", [])):
+            for media in media_list:
+                url = media.get("url", "")
+                media_type = media.get("type", "")
+                if url and ("image" in media_type or url.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif"))):
+                    return url
+
+        # enclosure
+        for enc in entry.get("enclosures", []):
+            url = enc.get("href", "") or enc.get("url", "")
+            enc_type = enc.get("type", "")
+            if url and "image" in enc_type:
+                return url
+
+        # Fallback: first <img> in content/summary HTML
+        content_html = ""
+        content_list = entry.get("content")
+        if content_list:
+            content_html = content_list[0].get("value", "") if content_list else ""
+        elif "summary" in entry:
+            content_html = entry.get("summary", "")
+
+        if content_html and "<img" in content_html:
+            import re
+            img_match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', content_html)
+            if img_match:
+                img_url = img_match.group(1)
+                # Skip tiny icons/badges (common in Reddit)
+                if not any(skip in img_url for skip in ("emoji", "award", "icon", "badge", "flair")):
+                    return img_url
+
         return None
 
     def _extract_content(self, entry) -> str:

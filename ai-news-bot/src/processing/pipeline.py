@@ -10,7 +10,7 @@ from ..sources.nitter import NitterFetcher
 from ..sources.web_scraper import WebScraperFetcher
 from ..storage.database import Database
 from ..storage import queries
-from ..processing.dedup import normalize_url, compute_content_hash
+from ..processing.dedup import normalize_url, compute_content_hash, titles_are_similar
 from ..processing.scorer import compute_score
 from ..processing.llm import LLMProcessor
 
@@ -37,6 +37,10 @@ class Pipeline:
         stats = {"fetched": 0, "new": 0, "duplicates": 0, "processed": 0, "errors": 0}
 
         # TIER 1: Fetch + Dedup + Score
+        # Pre-load recent titles for semantic dedup
+        recent = await queries.get_recent_titles(self._db, hours=48)
+        self._recent_titles = [(r["title"], r["source_name"]) for r in recent]
+
         sources = await queries.get_active_sources(self._db)
         for source in sources:
             try:
@@ -102,6 +106,15 @@ class Pipeline:
             if age_hours > 48:
                 return False
 
+        # Semantic dedup: skip if a similar title already exists
+        for existing_title, _ in getattr(self, "_recent_titles", []):
+            if titles_are_similar(article.title, existing_title):
+                logger.debug(
+                    "Semantic dedup: '%s' ~ '%s'",
+                    article.title[:60], existing_title[:60],
+                )
+                return False
+
         url_norm = normalize_url(article.url)
         content_hash = compute_content_hash(article.title, article.content)
 
@@ -124,7 +137,14 @@ class Pipeline:
             source_name=article.source_name,
             importance_score=score,
             published_at=article.published_at.isoformat() if article.published_at else None,
+            image_url=getattr(article, "image_url", None),
         )
+
+        if result is not None:
+            # Add to in-memory cache for semantic dedup within this cycle
+            if hasattr(self, "_recent_titles"):
+                self._recent_titles.append((article.title, article.source_name))
+
         return result is not None
 
     async def _tier2_process(self) -> int:

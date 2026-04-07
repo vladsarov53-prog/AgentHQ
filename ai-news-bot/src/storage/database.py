@@ -66,6 +66,13 @@ class Database:
                 )
                 logger.info("Migration v4: added articles.llm_fail_count")
 
+        if current < 5:
+            if not await self._column_exists("articles", "image_url"):
+                await self._conn.execute(
+                    "ALTER TABLE articles ADD COLUMN image_url TEXT"
+                )
+                logger.info("Migration v5: added articles.image_url")
+
         if current < SCHEMA_VERSION:
             await self._conn.execute(
                 "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",

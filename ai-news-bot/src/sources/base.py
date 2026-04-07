@@ -13,6 +13,7 @@ class RawArticle:
     published_at: datetime | None
     source_name: str
     source_id: int
+    image_url: str | None = None
 
 
 class BaseFetcher(ABC):

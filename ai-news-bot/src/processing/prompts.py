@@ -31,8 +31,8 @@ def build_summarize_user_prompt(articles: list[dict]) -> str:
     parts = [f"Today is {today}. Analyze these {len(articles)} articles. Mark OLD news as importance 1:\n"]
 
     for i, article in enumerate(articles, 1):
-        content = article.get("content_raw", "")[:2000]
-        published = article.get("published_at", "")
+        content = (article.get("content_raw") or "")[:2000]
+        published = article.get("published_at") or ""
         parts.append(
             f"---ARTICLE {i}---\n"
             f"Title: {article['title']}\n"

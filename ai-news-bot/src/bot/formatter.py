@@ -1,7 +1,18 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from html import escape
+
+from ..processing.dedup import titles_are_similar
+
+
+@dataclass
+class DigestCard:
+    """A single digest item: text + optional image."""
+    text: str
+    image_url: str | None = None
+
 
 TAG_LABELS = {
     "agentic": "Агентные системы",
@@ -36,6 +47,7 @@ MONTHS_RU = {
 }
 
 MAX_MESSAGE_LEN = 4000
+MAX_CAPTION_LEN = 1024  # Telegram photo caption limit
 MAX_DIGEST_ARTICLES = 5
 
 
@@ -48,12 +60,29 @@ def _date_ru(date_str: str) -> str:
         return date_str
 
 
+def _dedup_articles(articles: list[dict]) -> list[dict]:
+    """Remove semantically similar articles, keeping the one with higher importance."""
+    result: list[dict] = []
+    for article in articles:
+        title = article.get("title_ru") or article.get("title", "")
+        is_dup = False
+        for kept in result:
+            kept_title = kept.get("title_ru") or kept.get("title", "")
+            if titles_are_similar(title, kept_title):
+                is_dup = True
+                break
+        if not is_dup:
+            result.append(article)
+    return result
+
+
 def format_digest(articles: list[dict], date_str: str) -> list[str]:
     if not articles:
         return ["Новых AI-новостей пока нет. Попробуйте позже."]
 
     # Only significant news (importance >= 6), top 5
     articles = [a for a in articles if a.get("importance_score", 0) >= 6]
+    articles = _dedup_articles(articles)
     articles = articles[:MAX_DIGEST_ARTICLES]
 
     if not articles:
@@ -103,6 +132,85 @@ def _format_compact_card(num: int, article: dict) -> str:
         f"{summary}\n"
         f"<i>{source}</i>"
     )
+
+
+def format_digest_cards(articles: list[dict], date_str: str) -> list[DigestCard]:
+    """Format digest as individual cards with images for rich Telegram display."""
+    if not articles:
+        return [DigestCard(text="Новых AI-новостей пока нет. Попробуйте позже.")]
+
+    articles = [a for a in articles if a.get("importance_score", 0) >= 6]
+    articles = _dedup_articles(articles)
+    articles = articles[:MAX_DIGEST_ARTICLES]
+
+    if not articles:
+        return [DigestCard(text="Сегодня значимых новостей в AI не было.")]
+
+    date_formatted = _date_ru(date_str)
+    cards: list[DigestCard] = []
+
+    # Header card (no image)
+    cards.append(DigestCard(
+        text=f"📡 <b>AI-дайджест</b>  |  {escape(date_formatted)}"
+    ))
+
+    # Individual article cards
+    for i, article in enumerate(articles, 1):
+        caption = _format_photo_caption(i, article)
+        image = article.get("image_url") or None
+        cards.append(DigestCard(text=caption, image_url=image))
+
+    # Footer
+    sources = set(a.get("source_name", "") for a in articles)
+    cards.append(DigestCard(
+        text=f"{len(articles)} новостей из {len(sources)} источников"
+    ))
+
+    return cards
+
+
+def _format_photo_caption(num: int, article: dict) -> str:
+    """Format article as a photo caption (max 1024 chars for Telegram)."""
+    title = escape(_get_title_ru(article))
+    url = article.get("url", "")
+    source = escape(article.get("source_name", ""))
+
+    tags = _parse_tags(article.get("tags", "[]"))
+    emoji = TAG_EMOJI.get(tags[0], "📌") if tags else "📌"
+
+    # Tag label
+    tag_label = ""
+    if tags:
+        label = TAG_LABELS.get(tags[0], "")
+        if label:
+            tag_label = f"  #{escape(label)}"
+
+    # Summary: trim to fit caption limit
+    summary = article.get("summary_ru") or ""
+    if "\n" in summary:
+        summary = summary.split("\n")[0]
+    if len(summary) > 200:
+        summary = summary[:197] + "..."
+    summary = escape(summary)
+
+    caption = (
+        f"{emoji} <b>{num}. {title}</b>{tag_label}\n\n"
+        f"{summary}\n\n"
+        f"<a href=\"{escape(url)}\">Читать</a>  |  <i>{source}</i>"
+    )
+
+    # Ensure it fits the caption limit
+    if len(caption) > MAX_CAPTION_LEN:
+        # Shorten summary to fit
+        over = len(caption) - MAX_CAPTION_LEN + 10
+        summary = summary[:len(summary) - over] + "..."
+        caption = (
+            f"{emoji} <b>{num}. {title}</b>{tag_label}\n\n"
+            f"{summary}\n\n"
+            f"<a href=\"{escape(url)}\">Читать</a>  |  <i>{source}</i>"
+        )
+
+    return caption
 
 
 def format_instant(article: dict) -> str:

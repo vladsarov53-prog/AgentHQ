@@ -13,7 +13,7 @@ from ..processing.llm import LLMProcessor
 from ..processing.prompts import SYSTEM_PROMPT_DIGEST
 from ..storage.database import Database
 from ..storage import queries
-from .formatter import format_digest, format_instant
+from .formatter import format_digest, format_digest_cards, format_instant
 
 logger = logging.getLogger(__name__)
 
@@ -124,18 +124,35 @@ async def _fetch_and_dispatch(
 
             for article in urgent:
                 text = format_instant(article)
+                image_url = article.get("image_url")
                 for sub in subscribers:
                     tid = sub["telegram_id"]
                     if sent_count.get(tid, 0) >= max_instant:
                         continue
                     if _matches_filter(article, sub):
                         try:
-                            await bot.send_message(
-                                tid,
-                                text,
-                                parse_mode="HTML",
-                                disable_web_page_preview=True,
-                            )
+                            if image_url:
+                                try:
+                                    await bot.send_photo(
+                                        tid,
+                                        photo=image_url,
+                                        caption=text,
+                                        parse_mode="HTML",
+                                    )
+                                except Exception:
+                                    await bot.send_message(
+                                        tid,
+                                        text,
+                                        parse_mode="HTML",
+                                        disable_web_page_preview=False,
+                                    )
+                            else:
+                                await bot.send_message(
+                                    tid,
+                                    text,
+                                    parse_mode="HTML",
+                                    disable_web_page_preview=False,
+                                )
                             sent_count[tid] = sent_count.get(tid, 0) + 1
                             await queries.increment_instant_count(db, tid)
                         except Exception as e:
@@ -166,18 +183,13 @@ async def _send_daily_digest(
             return
 
         date_str = datetime.now().strftime("%d %B %Y")
-        messages = format_digest(articles, date_str)
+        cards = format_digest_cards(articles, date_str)
 
         subscribers = await queries.get_digest_subscribers(db)
         for sub in subscribers:
-            for msg in messages:
+            for card in cards:
                 try:
-                    await bot.send_message(
-                        sub["telegram_id"],
-                        msg,
-                        parse_mode="HTML",
-                        disable_web_page_preview=True,
-                    )
+                    await _send_card(bot, sub["telegram_id"], card)
                 except Exception as e:
                     logger.warning("Failed to send digest to %s: %s", sub["telegram_id"], e)
 
@@ -236,6 +248,30 @@ async def _health_check(db: Database, bot: Bot, admin_id: int = 0) -> None:
         )
     except Exception as e:
         logger.error("Health check error: %s", e)
+
+
+async def _send_card(bot: Bot, chat_id: int, card) -> None:
+    """Send a DigestCard as photo (if image_url exists) or text message."""
+    if card.image_url:
+        try:
+            await bot.send_photo(
+                chat_id,
+                photo=card.image_url,
+                caption=card.text,
+                parse_mode="HTML",
+            )
+            return
+        except Exception as e:
+            # Image URL might be broken/expired, fall back to text
+            logger.debug("send_photo failed (%s), falling back to text: %s", card.image_url, e)
+
+    # Text-only fallback (or card without image)
+    await bot.send_message(
+        chat_id,
+        card.text,
+        parse_mode="HTML",
+        disable_web_page_preview=False,  # allow Telegram link preview as fallback image
+    )
 
 
 def _matches_filter(article: dict, subscriber: dict) -> bool:

@@ -50,6 +50,10 @@ class LLMProcessor:
         if response is None:
             return []
 
+        if not response.choices:
+            logger.warning("LLM returned empty choices")
+            return []
+
         raw_text = response.choices[0].message.content or ""
         cleaned = sanitize_llm_output(raw_text)
 
@@ -73,7 +77,9 @@ class LLMProcessor:
 
         validated = []
         for item in results:
-            tags = [t for t in item.get("tags", []) if t in VALID_TAGS]
+            if not isinstance(item, dict):
+                continue
+            tags = [t for t in (item.get("tags") or []) if t in VALID_TAGS]
             importance = item.get("importance", 5)
             importance = max(1, min(10, importance))
 
@@ -130,6 +136,10 @@ class LLMProcessor:
             temperature=0.5,
         )
         if response is None:
+            return ""
+
+        if not response.choices:
+            logger.warning("LLM returned empty choices for digest")
             return ""
 
         return response.choices[0].message.content or ""

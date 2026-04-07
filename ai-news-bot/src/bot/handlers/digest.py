@@ -9,7 +9,7 @@ from aiogram.types import Message
 
 from ...storage.database import Database
 from ...storage import queries
-from ..formatter import format_digest
+from ..formatter import format_digest_cards
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -36,7 +36,22 @@ async def cmd_digest(message: Message, db: Database, pipeline=None) -> None:
         return
 
     date_str = datetime.now().strftime("%d %B %Y")
-    messages = format_digest(articles, date_str)
+    cards = format_digest_cards(articles, date_str)
 
-    for msg in messages:
-        await message.answer(msg, parse_mode="HTML", disable_web_page_preview=True)
+    for card in cards:
+        if card.image_url:
+            try:
+                await message.answer_photo(
+                    photo=card.image_url,
+                    caption=card.text,
+                    parse_mode="HTML",
+                )
+                continue
+            except Exception as e:
+                logger.debug("send_photo failed, falling back to text: %s", e)
+
+        await message.answer(
+            card.text,
+            parse_mode="HTML",
+            disable_web_page_preview=False,
+        )
