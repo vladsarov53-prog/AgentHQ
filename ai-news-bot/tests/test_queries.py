@@ -102,4 +102,4 @@ async def test_health_status(db):
 async def test_schema_version(db):
     cursor = await db.conn.execute("SELECT MAX(version) as v FROM schema_version")
     row = await cursor.fetchone()
-    assert row["v"] == 4
+    assert row["v"] == 5

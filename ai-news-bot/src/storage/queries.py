@@ -376,6 +376,18 @@ async def mark_article_llm_failed(db: Database, article_id: int) -> None:
     await db.conn.commit()
 
 
+async def reset_llm_failed(db: Database) -> int:
+    """Reset LLM-failed articles so they can be reprocessed."""
+    cursor = await db.conn.execute(
+        """UPDATE articles
+           SET llm_fail_count = 0, processed_at = NULL,
+               summary_ru = NULL, tags = NULL, importance_score = 5
+           WHERE llm_fail_count >= 3"""
+    )
+    await db.conn.commit()
+    return cursor.rowcount
+
+
 async def get_health_status(db: Database) -> dict:
     result = {}
 
@@ -422,9 +434,11 @@ async def get_health_status(db: Database) -> dict:
     row = await cursor.fetchone()
     result["last_fetch"] = row["t"] if row else None
 
-    # LLM failed articles
+    # LLM failed articles (only last 7 days to avoid stale accumulation)
     cursor = await db.conn.execute(
-        "SELECT COUNT(*) as c FROM articles WHERE llm_fail_count >= 3"
+        """SELECT COUNT(*) as c FROM articles
+           WHERE llm_fail_count >= 3
+             AND fetched_at >= datetime('now', '-7 days')"""
     )
     result["llm_failed"] = (await cursor.fetchone())["c"]
 

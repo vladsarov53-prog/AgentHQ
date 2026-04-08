@@ -78,7 +78,20 @@ async def cmd_health(message: Message, db: Database, admin_id: int) -> None:
         f"Источников без фетча: {health['stale_sources']}\n"
         f"Источников с ошибками: {health['error_sources']}\n"
         f"Обработано за 24ч: {health['processed_24h']}\n"
-        f"LLM-failed: {health['llm_failed']}\n"
+        f"LLM-failed (7д): {health['llm_failed']}\n"
         f"Последний фетч: {health['last_fetch'] or 'никогда'}"
     )
     await message.answer(text, parse_mode="HTML")
+
+
+@router.message(Command("retry_failed"))
+async def cmd_retry_failed(message: Message, db: Database, admin_id: int) -> None:
+    if message.from_user.id != admin_id:
+        await message.answer("Доступ только для администратора.")
+        return
+
+    count = await queries.reset_llm_failed(db)
+    if count > 0:
+        await message.answer(f"Сброшено {count} LLM-failed статей. Будут обработаны в следующем цикле.")
+    else:
+        await message.answer("Нет LLM-failed статей для сброса.")

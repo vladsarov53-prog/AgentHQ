@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS articles (
     sent_digest INTEGER DEFAULT 0,
     sent_instant INTEGER DEFAULT 0,
     llm_fail_count INTEGER DEFAULT 0,
+    image_url TEXT,
     UNIQUE(url_normalized)
 );
 
