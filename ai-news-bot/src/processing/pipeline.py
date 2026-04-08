@@ -16,7 +16,7 @@ from ..processing.llm import LLMProcessor
 
 logger = logging.getLogger(__name__)
 
-LLM_MAX_RETRIES = 3
+LLM_MAX_RETRIES = 5
 
 
 def _chunk(items: list, size: int):
@@ -34,10 +34,9 @@ class Pipeline:
         self._web_scraper = WebScraperFetcher()
 
     async def run_fetch_cycle(self) -> dict:
-        stats = {"fetched": 0, "new": 0, "duplicates": 0, "processed": 0, "errors": 0}
+        stats = {"fetched": 0, "new": 0, "duplicates": 0, "processed": 0, "retried": 0, "errors": 0}
 
         # TIER 1: Fetch + Dedup + Score
-        # Pre-load recent titles for semantic dedup
         recent = await queries.get_recent_titles(self._db, hours=48)
         self._recent_titles = [(r["title"], r["source_name"]) for r in recent]
 
@@ -65,15 +64,20 @@ class Pipeline:
         if broken:
             logger.warning("Disabled broken sources: %s", broken)
 
-        # TIER 2: LLM Processing
+        # TIER 2: LLM Processing (new articles)
         if self._llm.daily_calls < self._config.llm.max_daily_calls:
             processed = await self._tier2_process()
             stats["processed"] = processed
 
+        # TIER 3: Retry previously failed articles (with remaining daily budget)
+        if self._llm.daily_calls < self._config.llm.max_daily_calls:
+            retried = await self._tier3_retry_failed()
+            stats["retried"] = retried
+
         logger.info(
-            "Fetch cycle: fetched=%d new=%d dupes=%d processed=%d errors=%d",
+            "Fetch cycle: fetched=%d new=%d dupes=%d processed=%d retried=%d errors=%d",
             stats["fetched"], stats["new"], stats["duplicates"],
-            stats["processed"], stats["errors"],
+            stats["processed"], stats["retried"], stats["errors"],
         )
         return stats
 
@@ -141,7 +145,6 @@ class Pipeline:
         )
 
         if result is not None:
-            # Add to in-memory cache for semantic dedup within this cycle
             if hasattr(self, "_recent_titles"):
                 self._recent_titles.append((article.title, article.source_name))
 
@@ -155,15 +158,33 @@ class Pipeline:
         if not unprocessed:
             return 0
 
+        return await self._process_articles(unprocessed)
+
+    async def _tier3_retry_failed(self) -> int:
+        """Retry articles that previously failed LLM processing (but haven't hit max retries)."""
+        failed = await queries.get_retryable_failed_articles(
+            self._db,
+            max_fail_count=LLM_MAX_RETRIES,
+            limit=self._config.llm.batch_size * 3,
+        )
+
+        if not failed:
+            return 0
+
+        logger.info("Retrying %d previously failed articles", len(failed))
+        return await self._process_articles(failed)
+
+    async def _process_articles(self, articles: list[dict]) -> int:
+        """Common processing logic for both new and retry articles."""
         total_processed = 0
-        for i, batch in enumerate(_chunk(unprocessed, self._config.llm.batch_size)):
+        for i, batch in enumerate(_chunk(articles, self._config.llm.batch_size)):
             if self._llm.daily_calls >= self._config.llm.max_daily_calls:
                 logger.warning("Daily LLM call limit reached (%d)", self._config.llm.max_daily_calls)
                 break
 
-            # Rate limit: pause between API calls (OpenRouter free tier, 429 mitigation)
+            # Rate limit: pause between API calls (free tier, 429 mitigation)
             if i > 0:
-                await asyncio.sleep(60)
+                await asyncio.sleep(30)
 
             results = await self._llm.summarize_batch(
                 batch,

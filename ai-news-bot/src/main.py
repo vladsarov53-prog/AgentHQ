@@ -68,6 +68,7 @@ async def main() -> None:
         api_key=env.openrouter_api_key,
         summarize_model=config.llm.summarize_model,
         digest_model=config.llm.digest_model,
+        fallback_model=config.llm.fallback_model,
     )
 
     # Initialize pipeline

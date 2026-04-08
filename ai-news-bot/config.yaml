@@ -4,16 +4,17 @@ bot:
   fetch_interval_minutes: 45
   instant_threshold: 8
   max_articles_per_digest: 10
-  max_instant_per_day: 2
+  max_instant_per_day: 3
   language: "ru"
 
 llm:
-  summarize_model: "qwen/qwen3.6-plus:free"
-  digest_model: "qwen/qwen3.6-plus:free"
+  summarize_model: "qwen/qwen3-235b-a22b:free"
+  digest_model: "qwen/qwen3-235b-a22b:free"
+  fallback_model: "mistralai/mistral-small-3.1-24b-instruct:free"
   max_tokens_summarize: 1024
   max_tokens_digest: 4096
   batch_size: 5
-  max_daily_calls: 200
+  max_daily_calls: 300
 
 tags:
   - id: "agentic"
@@ -90,6 +91,26 @@ sources:
       priority: "medium"
     - name: "Import AI"
       url: "https://importai.substack.com/feed"
+      feed_type: "rss"
+      priority: "medium"
+
+  tech_media:
+    - name: "TechCrunch AI"
+      url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "The Verge AI"
+      url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "VentureBeat AI"
+      url: "https://venturebeat.com/category/ai/feed/"
+      feed_type: "rss"
+      priority: "medium"
+
+  aggregators:
+    - name: "HackerNews AI"
+      url: "https://hnrss.org/newest?q=AI+OR+LLM+OR+GPT+OR+Claude&points=50"
       feed_type: "rss"
       priority: "medium"
 

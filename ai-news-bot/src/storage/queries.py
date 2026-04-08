@@ -364,6 +364,22 @@ async def increment_llm_fail(db: Database, article_id: int) -> int:
     return row["llm_fail_count"] if row else 0
 
 
+async def get_retryable_failed_articles(
+    db: Database, max_fail_count: int = 5, limit: int = 15
+) -> list[dict]:
+    """Get articles that failed LLM processing but haven't exceeded max retries."""
+    cursor = await db.conn.execute(
+        """SELECT * FROM articles
+           WHERE processed_at IS NULL
+             AND llm_fail_count > 0
+             AND llm_fail_count < ?
+           ORDER BY llm_fail_count ASC, fetched_at ASC
+           LIMIT ?""",
+        (max_fail_count, limit),
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
 async def mark_article_llm_failed(db: Database, article_id: int) -> None:
     now = datetime.now(timezone.utc).isoformat()
     await db.conn.execute(

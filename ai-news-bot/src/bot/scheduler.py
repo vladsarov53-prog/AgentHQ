@@ -92,7 +92,7 @@ def setup_scheduler(
         "interval",
         hours=2,
         id="health_check",
-        kwargs=common_kwargs,
+        kwargs={**common_kwargs, "llm": llm},
     )
 
     return scheduler
@@ -116,7 +116,6 @@ async def _fetch_and_dispatch(
         urgent = await queries.get_unsent_instant(db, threshold)
 
         if urgent:
-            # Track sent count per subscriber in memory to enforce limit
             sent_count: dict[int, int] = {}
             subscribers = await queries.get_instant_subscribers(db, max_per_day=max_instant)
             for sub in subscribers:
@@ -183,13 +182,20 @@ async def _send_daily_digest(
             return
 
         date_str = datetime.now().strftime("%d %B %Y")
-        cards = format_digest_cards(articles, date_str)
+
+        # Use unified digest format (single message with sections)
+        messages = format_digest(articles, date_str)
 
         subscribers = await queries.get_digest_subscribers(db)
         for sub in subscribers:
-            for card in cards:
+            for msg in messages:
                 try:
-                    await _send_card(bot, sub["telegram_id"], card)
+                    await bot.send_message(
+                        sub["telegram_id"],
+                        msg,
+                        parse_mode="HTML",
+                        disable_web_page_preview=False,
+                    )
                 except Exception as e:
                     logger.warning("Failed to send digest to %s: %s", sub["telegram_id"], e)
 
@@ -220,7 +226,7 @@ async def _reset_counters(llm: LLMProcessor, db: Database) -> None:
     logger.info("Daily LLM and instant counters reset")
 
 
-async def _health_check(db: Database, bot: Bot, admin_id: int = 0) -> None:
+async def _health_check(db: Database, bot: Bot, llm: LLMProcessor, admin_id: int = 0) -> None:
     try:
         health = await queries.get_health_status(db)
         issues = []
@@ -234,6 +240,21 @@ async def _health_check(db: Database, bot: Bot, admin_id: int = 0) -> None:
         if health["llm_failed"] > 5:
             issues.append(f"LLM-failed статей: {health['llm_failed']}")
 
+        # Circuit breaker status
+        cb_stats = llm.circuit_breaker_stats
+        for model_name, stats in cb_stats.items():
+            short_name = model_name.split("/")[-1][:30]
+            if stats["state"] != "closed":
+                issues.append(
+                    f"Circuit breaker [{short_name}]: {stats['state'].upper()} "
+                    f"(fails: {stats['consecutive_failures']})"
+                )
+            if stats["total_calls"] > 0 and stats["success_rate_pct"] < 80:
+                issues.append(
+                    f"LLM success rate [{short_name}]: {stats['success_rate_pct']}% "
+                    f"({stats['total_calls']} calls)"
+                )
+
         if issues and admin_id:
             text = "HEALTH CHECK:\n" + "\n".join(f"  {i}" for i in issues)
             try:
@@ -242,36 +263,13 @@ async def _health_check(db: Database, bot: Bot, admin_id: int = 0) -> None:
                 logger.error("Failed to send health check: %s", e)
 
         logger.info(
-            "Health: unprocessed=%d stuck=%d stale_sources=%d errors=%d processed_24h=%d",
+            "Health: unprocessed=%d stuck=%d stale_sources=%d errors=%d processed_24h=%d cb=%s",
             health["unprocessed"], health["stuck_articles"],
             health["stale_sources"], health["error_sources"], health["processed_24h"],
+            {m.split("/")[-1][:20]: s["state"] for m, s in cb_stats.items()},
         )
     except Exception as e:
         logger.error("Health check error: %s", e)
-
-
-async def _send_card(bot: Bot, chat_id: int, card) -> None:
-    """Send a DigestCard as photo (if image_url exists) or text message."""
-    if card.image_url:
-        try:
-            await bot.send_photo(
-                chat_id,
-                photo=card.image_url,
-                caption=card.text,
-                parse_mode="HTML",
-            )
-            return
-        except Exception as e:
-            # Image URL might be broken/expired, fall back to text
-            logger.debug("send_photo failed (%s), falling back to text: %s", card.image_url, e)
-
-    # Text-only fallback (or card without image)
-    await bot.send_message(
-        chat_id,
-        card.text,
-        parse_mode="HTML",
-        disable_web_page_preview=False,  # allow Telegram link preview as fallback image
-    )
 
 
 def _matches_filter(article: dict, subscriber: dict) -> bool:

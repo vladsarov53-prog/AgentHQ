@@ -4,25 +4,33 @@ CRITICAL FRESHNESS RULE: Today's date is provided in the prompt. Only news from 
 
 BE EXTREMELY SELECTIVE. Only high-importance news survives. Ask yourself: "Would a CTO forward this to their team TODAY?" If no, importance <= 4.
 
-For each article:
-1. title_ru: Headline IN RUSSIAN. Max 8 words. No [D]/[P] brackets.
-2. summary_ru: 1 sentence IN RUSSIAN. Facts only: who released what, what metric improved, what changed. Be concise. Never "the author discusses" or "the community debates".
-3. why_matters: 1 short sentence IN RUSSIAN starting with dash. Practical impact for AI builders. Only if importance >= 7.
-4. tags: 1-2 from: ["agentic", "llm_engineering", "models", "research", "products", "open_source", "safety", "mcp_a2a", "sapr_ai", "business"].
-5. importance: integer 1-10. BE STRICT:
-   9-10: New frontier model (GPT-5, Claude 5), breakthrough SOTA, industry-shifting announcement FROM TODAY
-   7-8: Major open-source release, significant benchmark result, new framework from big lab FROM THIS WEEK
-   6: Strong paper with practical results, important tool update
-   5: Decent research, useful tutorial from known expert
-   3-4: Minor updates, opinions, niche topics
-   1-2: Reddit discussions, questions, career advice, OLD news re-reported, already known events
+For each article, respond with a JSON object containing these exact fields:
+- "article_index": integer (matches the article number from input)
+- "title_ru": string (headline IN RUSSIAN, max 8 words, no brackets)
+- "summary_ru": string (1 sentence IN RUSSIAN, facts only: who released what, what metric improved)
+- "why_matters": string (1 short sentence IN RUSSIAN starting with dash, practical impact. Only if importance >= 7, otherwise empty string "")
+- "tags": array of 1-2 strings from: ["agentic", "llm_engineering", "models", "research", "products", "open_source", "safety", "mcp_a2a", "sapr_ai", "business"]
+- "importance": integer 1-10
 
-OLD NEWS re-reported as new = importance 1. Always check if the event is actually recent.
-NEWS about people's personal lives, lawsuits, drama = importance 2.
+IMPORTANCE SCALE (BE STRICT):
+  9-10: New frontier model (GPT-5, Claude 5), breakthrough SOTA, industry-shifting announcement FROM TODAY
+  7-8: Major open-source release, significant benchmark result, new framework from big lab FROM THIS WEEK
+  6: Strong paper with practical results, important tool update
+  5: Decent research, useful tutorial from known expert
+  3-4: Minor updates, opinions, niche topics
+  1-2: Reddit discussions, questions, career advice, OLD news re-reported, already known events
+
+OLD NEWS re-reported as new = importance 1.
 Reddit [D] threads, "what should I use", "looking for advice" = importance 1.
 Opinions without new data = importance 3.
 
-Respond ONLY with valid JSON array."""
+EXAMPLE OUTPUT:
+[{"article_index": 1, "title_ru": "Anthropic выпустили Claude 4 Opus", "summary_ru": "Anthropic представили Claude 4 Opus с результатом 78% на SWE-bench, превзойдя GPT-4o на 12 п.п.", "why_matters": "- Первая модель, стабильно решающая реальные инженерные задачи без ручной доработки", "tags": ["models", "products"], "importance": 9}, {"article_index": 2, "title_ru": "LangChain добавил поддержку MCP", "summary_ru": "LangChain 0.3 интегрировал Model Context Protocol для подключения внешних инструментов к агентам.", "why_matters": "", "tags": ["agentic", "mcp_a2a"], "importance": 6}]
+
+RULES:
+- Respond ONLY with a valid JSON array. No text before or after.
+- No markdown code fences. No explanations.
+- Every object must have all 6 fields."""
 
 
 def build_summarize_user_prompt(articles: list[dict]) -> str:
@@ -42,8 +50,8 @@ def build_summarize_user_prompt(articles: list[dict]) -> str:
         )
 
     parts.append(
-        '\nRespond as JSON array:\n'
-        '[{"article_index": 1, "title_ru": "...", "summary_ru": "...", "why_matters": "- ...", "tags": [...], "importance": N}, ...]'
+        '\nRespond as JSON array (no markdown, no code fences):\n'
+        '[{"article_index": 1, "title_ru": "...", "summary_ru": "...", "why_matters": "...", "tags": [...], "importance": N}, ...]'
     )
 
     return "\n".join(parts)
