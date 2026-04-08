@@ -88,6 +88,30 @@ async def test_llm_fail_tracking(db):
 
 
 @pytest.mark.asyncio
+async def test_retryable_failed_articles(db):
+    """Articles with 1-4 fail count should be retryable, 5+ should not."""
+    # Create articles with different fail counts
+    for i in range(5):
+        aid = await queries.insert_article(
+            db, f"https://retry.com/{i}", f"https://retry.com/{i}",
+            f"hretry{i}", f"Retry {i}", "Content", 1, "test",
+        )
+        for _ in range(i + 1):
+            await queries.increment_llm_fail(db, aid)
+
+    # fail counts: 1, 2, 3, 4, 5
+    # retryable (< 5): 4 articles
+    retryable = await queries.get_retryable_failed_articles(db, max_fail_count=5, limit=10)
+    assert len(retryable) == 4
+    # Should be ordered by fail_count ASC
+    assert retryable[0]["llm_fail_count"] == 1
+
+    # With max_fail_count=3, only 2 articles retryable (fail_count 1 and 2)
+    retryable2 = await queries.get_retryable_failed_articles(db, max_fail_count=3, limit=10)
+    assert len(retryable2) == 2
+
+
+@pytest.mark.asyncio
 async def test_health_status(db):
     health = await queries.get_health_status(db)
     assert "stuck_articles" in health
@@ -102,4 +126,4 @@ async def test_health_status(db):
 async def test_schema_version(db):
     cursor = await db.conn.execute("SELECT MAX(version) as v FROM schema_version")
     row = await cursor.fetchone()
-    assert row["v"] == 4
+    assert row["v"] == 5

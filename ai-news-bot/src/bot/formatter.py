@@ -28,16 +28,37 @@ TAG_LABELS = {
 }
 
 TAG_EMOJI = {
-    "agentic": "🤖",
-    "llm_engineering": "🔧",
-    "models": "🧠",
-    "research": "🔬",
-    "products": "🚀",
-    "open_source": "📦",
-    "safety": "🛡",
-    "mcp_a2a": "🔗",
-    "sapr_ai": "📐",
-    "business": "💼",
+    "agentic": "\U0001f916",
+    "llm_engineering": "\U0001f527",
+    "models": "\U0001f9e0",
+    "research": "\U0001f52c",
+    "products": "\U0001f680",
+    "open_source": "\U0001f4e6",
+    "safety": "\U0001f6e1",
+    "mcp_a2a": "\U0001f517",
+    "sapr_ai": "\U0001f4d0",
+    "business": "\U0001f4bc",
+}
+
+# Section display order and grouping
+SECTION_ORDER = [
+    ("top", "\U0001f525 ГЛАВНОЕ", 8),           # importance >= 8
+    ("products", "\U0001f680 ПРОДУКТЫ И РЕЛИЗЫ", 0),
+    ("models", "\U0001f9e0 МОДЕЛИ", 0),
+    ("research", "\U0001f52c ИССЛЕДОВАНИЯ", 0),
+    ("agentic", "\U0001f916 АГЕНТЫ И ИНСТРУМЕНТЫ", 0),
+    ("open_source", "\U0001f4e6 OPEN SOURCE", 0),
+    ("other", "\U0001f4cc РАЗНОЕ", 0),
+]
+
+# Tags that map to each section
+SECTION_TAGS = {
+    "products": {"products"},
+    "models": {"models"},
+    "research": {"research"},
+    "agentic": {"agentic", "mcp_a2a", "llm_engineering"},
+    "open_source": {"open_source"},
+    "other": {"safety", "sapr_ai", "business"},
 }
 
 MONTHS_RU = {
@@ -47,8 +68,8 @@ MONTHS_RU = {
 }
 
 MAX_MESSAGE_LEN = 4000
-MAX_CAPTION_LEN = 1024  # Telegram photo caption limit
-MAX_DIGEST_ARTICLES = 5
+MAX_CAPTION_LEN = 1024
+MAX_DIGEST_ARTICLES = 10
 
 
 def _date_ru(date_str: str) -> str:
@@ -76,141 +97,118 @@ def _dedup_articles(articles: list[dict]) -> list[dict]:
     return result
 
 
+def _get_article_section(article: dict) -> str:
+    """Determine which section an article belongs to based on its tags."""
+    tags = _parse_tags(article.get("tags", "[]"))
+    if not tags:
+        return "other"
+    primary_tag = tags[0]
+    for section_id, section_tags in SECTION_TAGS.items():
+        if primary_tag in section_tags:
+            return section_id
+    return "other"
+
+
 def format_digest(articles: list[dict], date_str: str) -> list[str]:
+    """Format a unified digest with category grouping (like top Telegram channels)."""
     if not articles:
         return ["Новых AI-новостей пока нет. Попробуйте позже."]
 
-    # Only significant news (importance >= 6), top 5
-    articles = [a for a in articles if a.get("importance_score", 0) >= 6]
+    # Filter, dedup, limit
+    articles = [a for a in articles if a.get("importance_score", 0) >= 5]
     articles = _dedup_articles(articles)
     articles = articles[:MAX_DIGEST_ARTICLES]
 
     if not articles:
-        return ["Сегодня значимых новостей в AI не было."]
+        return ["\U0001f4ad Сегодня значимых новостей в AI не было."]
 
     date_formatted = _date_ru(date_str)
 
-    # Header
-    lines = [f"📡 <b>AI-дайджест</b>  |  {escape(date_formatted)}\n"]
+    # Split articles into sections
+    top_articles = [a for a in articles if a.get("importance_score", 0) >= 8]
+    regular_articles = [a for a in articles if a.get("importance_score", 0) < 8]
 
-    # Numbered compact cards
-    for i, article in enumerate(articles, 1):
-        lines.append(_format_compact_card(i, article))
+    # Group regular articles by section
+    sections: dict[str, list[dict]] = {}
+    for article in regular_articles:
+        section = _get_article_section(article)
+        sections.setdefault(section, []).append(article)
+
+    # Build the digest
+    lines = [f"\U0001f4e1 <b>AI-дайджест</b>  |  {escape(date_formatted)}\n"]
+
+    article_num = 0
+
+    # Top news first (if any)
+    if top_articles:
+        lines.append(f"\n\U0001f525 <b>ГЛАВНОЕ</b>\n")
+        for article in top_articles:
+            article_num += 1
+            lines.append(_format_digest_item(article_num, article, show_why=True))
+        lines.append("")
+
+    # Regular sections
+    for section_id, section_title, _ in SECTION_ORDER:
+        if section_id == "top":
+            continue
+        section_articles = sections.get(section_id, [])
+        if not section_articles:
+            continue
+        lines.append(f"\n{section_title}\n")
+        for article in section_articles:
+            article_num += 1
+            lines.append(_format_digest_item(article_num, article, show_why=False))
 
     # Footer
     sources = set(a.get("source_name", "") for a in articles)
-    lines.append(f"\n{len(articles)} новостей из {len(sources)} источников")
+    lines.append(f"\n\U0001f4ca {article_num} новостей из {len(sources)} источников")
 
     text = "\n".join(lines)
 
-    # Split if too long
     if len(text) <= MAX_MESSAGE_LEN:
         return [text]
 
     return _split_messages(lines)
 
 
-def _format_compact_card(num: int, article: dict) -> str:
-    """Compact card: number, emoji, title as link, one-line summary."""
-    title = escape(_get_title_ru(article))
-    url = escape(article.get("url", ""))
-    source = escape(article.get("source_name", ""))
-
-    tags = _parse_tags(article.get("tags", "[]"))
-    emoji = TAG_EMOJI.get(tags[0], "📌") if tags else "📌"
-
-    # Summary: first sentence only, trim to 120 chars
-    summary = article.get("summary_ru", "")
-    if "\n" in summary:
-        summary = summary.split("\n")[0]
-    if len(summary) > 140:
-        summary = summary[:137] + "..."
-    summary = escape(summary)
-
-    return (
-        f"\n{emoji} <b>{num}. <a href=\"{url}\">{title}</a></b>\n"
-        f"{summary}\n"
-        f"<i>{source}</i>"
-    )
-
-
-def format_digest_cards(articles: list[dict], date_str: str) -> list[DigestCard]:
-    """Format digest as individual cards with images for rich Telegram display."""
-    if not articles:
-        return [DigestCard(text="Новых AI-новостей пока нет. Попробуйте позже.")]
-
-    articles = [a for a in articles if a.get("importance_score", 0) >= 6]
-    articles = _dedup_articles(articles)
-    articles = articles[:MAX_DIGEST_ARTICLES]
-
-    if not articles:
-        return [DigestCard(text="Сегодня значимых новостей в AI не было.")]
-
-    date_formatted = _date_ru(date_str)
-    cards: list[DigestCard] = []
-
-    # Header card (no image)
-    cards.append(DigestCard(
-        text=f"📡 <b>AI-дайджест</b>  |  {escape(date_formatted)}"
-    ))
-
-    # Individual article cards
-    for i, article in enumerate(articles, 1):
-        caption = _format_photo_caption(i, article)
-        image = article.get("image_url") or None
-        cards.append(DigestCard(text=caption, image_url=image))
-
-    # Footer
-    sources = set(a.get("source_name", "") for a in articles)
-    cards.append(DigestCard(
-        text=f"{len(articles)} новостей из {len(sources)} источников"
-    ))
-
-    return cards
-
-
-def _format_photo_caption(num: int, article: dict) -> str:
-    """Format article as a photo caption (max 1024 chars for Telegram)."""
+def _format_digest_item(num: int, article: dict, show_why: bool = False) -> str:
+    """Format a single article in the unified digest."""
     title = escape(_get_title_ru(article))
     url = article.get("url", "")
     source = escape(article.get("source_name", ""))
 
     tags = _parse_tags(article.get("tags", "[]"))
-    emoji = TAG_EMOJI.get(tags[0], "📌") if tags else "📌"
+    emoji = TAG_EMOJI.get(tags[0], "\U0001f4cc") if tags else "\U0001f4cc"
 
-    # Tag label
-    tag_label = ""
-    if tags:
-        label = TAG_LABELS.get(tags[0], "")
-        if label:
-            tag_label = f"  #{escape(label)}"
+    # Summary
+    summary = article.get("summary_ru", "")
+    summary_lines = summary.split("\n")
+    main_summary = summary_lines[0] if summary_lines else ""
+    why_matters = ""
+    if len(summary_lines) > 1:
+        why_matters = summary_lines[1].strip()
 
-    # Summary: trim to fit caption limit
-    summary = article.get("summary_ru") or ""
-    if "\n" in summary:
-        summary = summary.split("\n")[0]
-    if len(summary) > 200:
-        summary = summary[:197] + "..."
-    summary = escape(summary)
+    if len(main_summary) > 200:
+        main_summary = main_summary[:197] + "..."
+    main_summary = escape(main_summary)
 
-    caption = (
-        f"{emoji} <b>{num}. {title}</b>{tag_label}\n\n"
-        f"{summary}\n\n"
-        f"<a href=\"{escape(url)}\">Читать</a>  |  <i>{source}</i>"
-    )
+    parts = [f"{emoji} <b>{num}. {title}</b>"]
+    parts.append(main_summary)
 
-    # Ensure it fits the caption limit
-    if len(caption) > MAX_CAPTION_LEN:
-        # Shorten summary to fit
-        over = len(caption) - MAX_CAPTION_LEN + 10
-        summary = summary[:len(summary) - over] + "..."
-        caption = (
-            f"{emoji} <b>{num}. {title}</b>{tag_label}\n\n"
-            f"{summary}\n\n"
-            f"<a href=\"{escape(url)}\">Читать</a>  |  <i>{source}</i>"
-        )
+    if show_why and why_matters:
+        why_clean = why_matters.lstrip("- ").strip()
+        if why_clean:
+            parts.append(f"<i>Почему важно: {escape(why_clean)}</i>")
 
-    return caption
+    parts.append(f"\U0001f517 <a href=\"{escape(url)}\">Читать оригинал</a>  |  {source}")
+
+    return "\n".join(parts)
+
+
+def format_digest_cards(articles: list[dict], date_str: str) -> list[DigestCard]:
+    """Format digest as a single unified message (not separate cards)."""
+    messages = format_digest(articles, date_str)
+    return [DigestCard(text=msg) for msg in messages]
 
 
 def format_instant(article: dict) -> str:
@@ -219,18 +217,24 @@ def format_instant(article: dict) -> str:
     source = escape(article.get("source_name", ""))
 
     tags = _parse_tags(article.get("tags", "[]"))
-    emoji = TAG_EMOJI.get(tags[0], "🔥") if tags else "🔥"
+    emoji = TAG_EMOJI.get(tags[0], "\U0001f525") if tags else "\U0001f525"
 
-    # Summary: first sentence only
+    # Summary with why_matters
     summary = article.get("summary_ru", "")
-    if "\n" in summary:
-        summary = summary.split("\n")[0]
-    summary = escape(summary)
+    summary_lines = summary.split("\n")
+    main_summary = escape(summary_lines[0]) if summary_lines else ""
+
+    why_matters = ""
+    if len(summary_lines) > 1:
+        why_clean = summary_lines[1].strip().lstrip("- ").strip()
+        if why_clean:
+            why_matters = f"\n<i>Почему важно: {escape(why_clean)}</i>"
 
     return (
         f"{emoji} <b>{title}</b>\n\n"
-        f"{summary}\n\n"
-        f"<a href=\"{url}\">{source}</a>"
+        f"{main_summary}"
+        f"{why_matters}\n\n"
+        f"\U0001f517 <a href=\"{url}\">Читать оригинал</a>  |  {source}"
     )
 
 

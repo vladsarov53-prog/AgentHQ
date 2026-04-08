@@ -48,12 +48,13 @@ class ScoringConfig:
 
 @dataclass
 class LLMConfig:
-    summarize_model: str = "qwen/qwen3.6-plus:free"
-    digest_model: str = "qwen/qwen3.6-plus:free"
+    summarize_model: str = "qwen/qwen3-235b-a22b:free"
+    digest_model: str = "qwen/qwen3-235b-a22b:free"
+    fallback_model: str = "mistralai/mistral-small-3.1-24b-instruct:free"
     max_tokens_summarize: int = 1024
     max_tokens_digest: int = 4096
     batch_size: int = 5
-    max_daily_calls: int = 200
+    max_daily_calls: int = 300
 
 
 @dataclass
@@ -98,10 +99,11 @@ def load_yaml_config(path: Path | None = None) -> AppConfig:
     llm = LLMConfig(
         summarize_model=llm_raw.get("summarize_model", LLMConfig.summarize_model),
         digest_model=llm_raw.get("digest_model", LLMConfig.digest_model),
+        fallback_model=llm_raw.get("fallback_model", LLMConfig.fallback_model),
         max_tokens_summarize=llm_raw.get("max_tokens_summarize", 1024),
         max_tokens_digest=llm_raw.get("max_tokens_digest", 4096),
         batch_size=llm_raw.get("batch_size", 5),
-        max_daily_calls=llm_raw.get("max_daily_calls", 200),
+        max_daily_calls=llm_raw.get("max_daily_calls", 300),
     )
 
     scoring_raw = raw.get("scoring", {})
