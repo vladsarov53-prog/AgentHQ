@@ -17,6 +17,7 @@
       "Write(.claude/skills/**)",
       "Write(.claude/settings.json)",
       "Write(documents/contracts/personal/**)",
+      "Read(documents/contracts/personal/**)",
       "Delete(**)"
     ]
   },
