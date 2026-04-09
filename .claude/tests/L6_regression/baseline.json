@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "created": "2026-04-09T14:08:16.084267",
+  "updated": "2026-04-09T14:08:16.084441",
+  "metrics": {
+    "L0_pass_rate": 1.0,
+    "L1_pass_rate": 1.0,
+    "L3_pass_rate": 1.0,
+    "L5_auto_pass_rate": 1.0,
+    "L2_golden_structure_rate": 1.0,
+    "anti_hallucination_median": 5.0,
+    "source_grounding_median": 4.5,
+    "completeness_median": 4.0
+  },
+  "per_agent": {
+    "accounting": {
+      "pass_rate": 1.0,
+      "hallucination_score": 5.0
+    },
+    "legal": {
+      "pass_rate": 1.0,
+      "clause_precision": 5.0
+    },
+    "operations": {
+      "pass_rate": 1.0,
+      "deadline_awareness": 5.0
+    },
+    "strategy": {
+      "pass_rate": 1.0,
+      "confidence_calibration": 5.0
+    }
+  },
+  "thresholds": {
+    "pass_rate_warn": 0.05,
+    "pass_rate_critical": 0.15,
+    "median_score_warn": 0.5,
+    "latency_warn": 0.2,
+    "anti_hallucination_min": 4,
+    "marker_overload": 3,
+    "file_access_limit": 5
+  }
+}
