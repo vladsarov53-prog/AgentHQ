@@ -65,7 +65,7 @@ async def main() -> None:
 
     # Initialize LLM
     llm = LLMProcessor(
-        api_key=env.openrouter_api_key,
+        api_key=env.gemini_api_key,
         summarize_model=config.llm.summarize_model,
         digest_model=config.llm.digest_model,
         fallback_model=config.llm.fallback_model,

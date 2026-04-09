@@ -190,7 +190,7 @@ class LLMProcessor:
         fallback_model: str = "",
     ):
         self._client = AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             api_key=api_key,
         )
         self._summarize_model = summarize_model

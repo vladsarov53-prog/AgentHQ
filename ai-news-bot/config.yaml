@@ -8,9 +8,9 @@ bot:
   language: "ru"
 
 llm:
-  summarize_model: "qwen/qwen3-235b-a22b:free"
-  digest_model: "qwen/qwen3-235b-a22b:free"
-  fallback_model: "mistralai/mistral-small-3.1-24b-instruct:free"
+  summarize_model: "gemini-2.0-flash"
+  digest_model: "gemini-2.0-flash"
+  fallback_model: "gemini-2.0-flash-lite"
   max_tokens_summarize: 1024
   max_tokens_digest: 4096
   batch_size: 5

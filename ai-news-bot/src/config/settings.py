@@ -14,7 +14,7 @@ load_dotenv(_env_path, override=True)
 
 class EnvSettings(BaseSettings):
     telegram_bot_token: str
-    openrouter_api_key: str
+    gemini_api_key: str
     admin_telegram_id: int
 
 
@@ -48,9 +48,9 @@ class ScoringConfig:
 
 @dataclass
 class LLMConfig:
-    summarize_model: str = "qwen/qwen3-235b-a22b:free"
-    digest_model: str = "qwen/qwen3-235b-a22b:free"
-    fallback_model: str = "mistralai/mistral-small-3.1-24b-instruct:free"
+    summarize_model: str = "gemini-2.0-flash"
+    digest_model: str = "gemini-2.0-flash"
+    fallback_model: str = "gemini-2.0-flash-lite"
     max_tokens_summarize: int = 1024
     max_tokens_digest: int = 4096
     batch_size: int = 5
