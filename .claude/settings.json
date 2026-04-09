@@ -17,6 +17,7 @@
       "Write(.claude/skills/**)",
       "Write(.claude/settings.json)",
       "Write(documents/contracts/personal/**)",
+      "Read(documents/contracts/personal/**)",
       "Delete(**)"
     ]
   },
@@ -27,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/safety-guard.py"
+            "command": "python .claude/hooks/safety-guard.py"
           }
         ]
       }
@@ -38,11 +39,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/session-log.py"
+            "command": "python .claude/hooks/session-log.py"
           },
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/lint-check.py"
+            "command": "python .claude/hooks/lint-check.py"
           }
         ]
       }
@@ -52,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/vault-context.py"
+            "command": "python .claude/hooks/vault-context.py"
           }
         ]
       },
@@ -61,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/context-recovery.py"
+            "command": "python .claude/hooks/context-recovery.py"
           }
         ]
       }
@@ -71,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/verification-gate.py"
+            "command": "python .claude/hooks/verification-gate.py"
           }
         ]
       }
@@ -81,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/subagent-context.py"
+            "command": "python .claude/hooks/subagent-context.py"
           }
         ]
       }
@@ -91,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python D:/REDPEAK/AgentHQ/.claude/hooks/prompt-enricher.py"
+            "command": "python .claude/hooks/prompt-enricher.py"
           }
         ]
       }
