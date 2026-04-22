@@ -14,6 +14,72 @@
       ]
     }
   },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/prompt-enricher.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/safety-guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/session-log.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/lint-check.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/verification-gate.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/output-quality-gate.py\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/vault-context.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/context-recovery.py\""
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Read(**)",
