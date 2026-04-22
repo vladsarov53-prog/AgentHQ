@@ -1,0 +1,219 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "30 routing test cases for AgentHQ dispatcher",
+    "source": "Anthropic (Eval-Driven), Microsoft AgentRx (intent-plan)"
+  },
+  "categories": {
+    "unambiguous": {
+      "description": "Однозначная маршрутизация: один субагент или скилл",
+      "cases": [
+        {
+          "id": "T-3.1",
+          "prompt": "Рассчитай взносы за март",
+          "expected_route": "accounting",
+          "expected_model": "sonnet"
+        },
+        {
+          "id": "T-3.2",
+          "prompt": "Проанализируй риски по NDA",
+          "expected_route": "legal",
+          "expected_model": "opus"
+        },
+        {
+          "id": "T-3.3",
+          "prompt": "Составь план на неделю",
+          "expected_route": "operations",
+          "expected_model": "sonnet"
+        },
+        {
+          "id": "T-3.4",
+          "prompt": "Что приоритетнее: наём или MVP?",
+          "expected_route": "strategy",
+          "expected_model": "opus"
+        },
+        {
+          "id": "T-3.5",
+          "prompt": "Исправь баг в парсере данных",
+          "expected_route": "engineering",
+          "expected_model": null
+        },
+        {
+          "id": "T-3.6",
+          "prompt": "Создай React-компонент дашборда",
+          "expected_route": "frontend-design",
+          "expected_model": null
+        },
+        {
+          "id": "T-3.7",
+          "prompt": "Напиши тесты на Playwright",
+          "expected_route": "webapp-testing",
+          "expected_model": null
+        },
+        {
+          "id": "T-3.8",
+          "prompt": "Сделай Word файл акта приёмки",
+          "expected_route": "anthropic-skills:docx",
+          "expected_model": null
+        },
+        {
+          "id": "T-3.9",
+          "prompt": "Подготовь таблицу расходов .xlsx",
+          "expected_route": "anthropic-skills:xlsx",
+          "expected_model": null
+        },
+        {
+          "id": "T-3.10",
+          "prompt": "Слайды для инвестора .pptx",
+          "expected_route": "anthropic-skills:pptx",
+          "expected_model": null
+        }
+      ]
+    },
+    "ambiguous": {
+      "description": "Неоднозначная маршрутизация: кросс-роль, intake, уточнение",
+      "cases": [
+        {
+          "id": "T-3.11",
+          "prompt": "Что по гранту?",
+          "expected_behavior": "operations или strategy (статус, не числа)",
+          "acceptable_routes": ["operations", "strategy", "cross:operations+strategy"]
+        },
+        {
+          "id": "T-3.12",
+          "prompt": "Проверь договор на сумму",
+          "expected_behavior": "Кросс-роль: legal + accounting",
+          "acceptable_routes": ["cross:legal+accounting", "legal"]
+        },
+        {
+          "id": "T-3.13",
+          "prompt": "Подготовь к встрече с ФСИ",
+          "expected_behavior": "Multi-agent: ops + acc + legal",
+          "acceptable_routes": ["cross:operations+accounting+legal", "cross:operations+accounting"]
+        },
+        {
+          "id": "T-3.14",
+          "prompt": "Что делать?",
+          "expected_behavior": "strategy (приоритеты, не список задач)",
+          "acceptable_routes": ["strategy", "operations"]
+        },
+        {
+          "id": "T-3.15",
+          "prompt": "Отправь письмо",
+          "expected_behavior": "Intake вопрос: кому, о чём, тон",
+          "acceptable_routes": ["intake_question"]
+        },
+        {
+          "id": "T-3.16",
+          "prompt": "Сделай презентацию",
+          "expected_behavior": "pitch-deck (контент) -> pptx (файл)",
+          "acceptable_routes": ["pitch-deck", "chain:pitch-deck+anthropic-skills:pptx"]
+        },
+        {
+          "id": "T-3.17",
+          "prompt": "Посмотри что с бюджетом",
+          "expected_behavior": "accounting (числа/бюджет)",
+          "acceptable_routes": ["accounting"]
+        },
+        {
+          "id": "T-3.18",
+          "prompt": "Подготовь отчёт",
+          "expected_behavior": "Intake: какой отчёт? Для кого?",
+          "acceptable_routes": ["intake_question"]
+        },
+        {
+          "id": "T-3.19",
+          "prompt": "Сколько мы должны?",
+          "expected_behavior": "accounting (финансовые) + legal (обязательства)",
+          "acceptable_routes": ["accounting", "cross:accounting+legal"]
+        },
+        {
+          "id": "T-3.20",
+          "prompt": "Как дела с Алексеем?",
+          "expected_behavior": "Контекст из памяти (contact) -> operations",
+          "acceptable_routes": ["operations", "intake_question"]
+        }
+      ]
+    },
+    "model_selection": {
+      "description": "Выбор модели sonnet vs opus по сложности задачи",
+      "cases": [
+        {
+          "id": "T-3.21",
+          "agent": "operations",
+          "task": "план на неделю",
+          "expected_model": "sonnet",
+          "reason": "шаблонная задача"
+        },
+        {
+          "id": "T-3.22",
+          "agent": "operations",
+          "task": "анализ рисков проекта",
+          "expected_model": "opus",
+          "reason": "аналитическая задача"
+        },
+        {
+          "id": "T-3.23",
+          "agent": "accounting",
+          "task": "дедлайны ФНС на апрель",
+          "expected_model": "sonnet",
+          "reason": "справка из CALENDAR.md"
+        },
+        {
+          "id": "T-3.24",
+          "agent": "accounting",
+          "task": "сверка расходов с бюджетом гранта",
+          "expected_model": "opus",
+          "reason": "аналитика"
+        },
+        {
+          "id": "T-3.25",
+          "agent": "legal",
+          "task": "любая задача",
+          "expected_model": "opus",
+          "reason": "legal всегда opus"
+        }
+      ]
+    },
+    "parallelization": {
+      "description": "Определение типа задачи по параллелизуемости",
+      "cases": [
+        {
+          "id": "T-3.26",
+          "prompt": "Подготовь данные для отчёта ФСИ",
+          "type": "parallelizable",
+          "expected_agents": ["accounting", "operations"],
+          "pattern": "parallel -> sequential assembly"
+        },
+        {
+          "id": "T-3.27",
+          "prompt": "Проанализируй договор и дай стратегическую рекомендацию",
+          "type": "sequential",
+          "expected_agents": ["legal", "strategy"],
+          "pattern": "legal first -> strategy uses legal output"
+        },
+        {
+          "id": "T-3.28",
+          "prompt": "Недельный стратегический брифинг",
+          "type": "mixed",
+          "expected_agents": ["operations", "accounting", "strategy"],
+          "pattern": "(ops || acc) -> strategy"
+        },
+        {
+          "id": "T-3.29",
+          "prompt": "Pitch-deck с финансовыми данными для инвестора",
+          "type": "parallelizable",
+          "expected_agents": ["strategy", "accounting"],
+          "pattern": "parallel -> pitch-deck assembly"
+        },
+        {
+          "id": "T-3.30",
+          "prompt": "Рассчитай НДФЛ с выплаты 100 000",
+          "type": "single",
+          "expected_agents": ["accounting"],
+          "pattern": "single agent, no parallelization"
+        }
+      ]
+    }
+  }
+}

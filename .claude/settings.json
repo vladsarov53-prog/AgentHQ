@@ -1,5 +1,85 @@
 {
-  "_comment": "ПРОВЕРИТЬ: формат settings.json может отличаться от фактической схемы Claude Code. Сверить при Фазе 0 (верификация платформы) и скорректировать.",
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": [
+        "D:/REDPEAK/Agent systems/AgentHQ/node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+      ]
+    },
+    "filesystem": {
+      "command": "node",
+      "args": [
+        "D:/REDPEAK/Agent systems/AgentHQ/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+        "D:/REDPEAK/Agent systems/AgentHQ"
+      ]
+    }
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/prompt-enricher.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/safety-guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/session-log.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/lint-check.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/verification-gate.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/output-quality-gate.py\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/vault-context.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/context-recovery.py\""
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Read(**)",
@@ -8,6 +88,7 @@
       "Write(finance/**)",
       "Write(tax/**)",
       "Write(memory/knowledge.jsonl)",
+      "Write(memory/knowledge_graph.json)",
       "Write(memory/backups/**)",
       "Write(memory/archive/**)",
       "Write(documents/comms/**)"
@@ -18,6 +99,7 @@
       "Write(.claude/skills/**)",
       "Write(.claude/settings.json)",
       "Write(documents/contracts/personal/**)",
+      "Read(documents/contracts/personal/**)",
       "Delete(**)"
     ]
   }

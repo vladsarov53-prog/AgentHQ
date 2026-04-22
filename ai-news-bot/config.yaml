@@ -1,0 +1,147 @@
+bot:
+  digest_time: "09:00"
+  timezone: "Europe/Moscow"
+  fetch_interval_minutes: 45
+  instant_threshold: 8
+  max_articles_per_digest: 10
+  max_instant_per_day: 3
+  language: "ru"
+
+llm:
+  summarize_model: "gemini-2.0-flash"
+  digest_model: "gemini-2.0-flash"
+  fallback_model: "gemini-2.0-flash-lite"
+  max_tokens_summarize: 1024
+  max_tokens_digest: 4096
+  batch_size: 5
+  max_daily_calls: 300
+
+tags:
+  - id: "agentic"
+    label: "Агентные системы"
+    keywords: ["agent", "agentic", "tool use", "function calling", "multi-agent", "orchestration"]
+  - id: "llm_engineering"
+    label: "LLM-инженерия"
+    keywords: ["fine-tuning", "RAG", "prompt engineering", "inference", "training", "distillation"]
+  - id: "models"
+    label: "Модели и архитектуры"
+    keywords: ["GPT", "Claude", "Gemini", "Llama", "transformer", "diffusion", "SOTA", "benchmark"]
+  - id: "research"
+    label: "Исследования"
+    keywords: ["paper", "arxiv", "study", "breakthrough", "NeurIPS", "ICML", "ICLR"]
+  - id: "products"
+    label: "Продукты и релизы"
+    keywords: ["launch", "release", "API", "product", "startup", "demo", "pricing"]
+  - id: "open_source"
+    label: "Open Source"
+    keywords: ["open source", "GitHub", "weights", "Hugging Face", "community", "license"]
+  - id: "safety"
+    label: "Безопасность AI"
+    keywords: ["alignment", "safety", "regulation", "governance", "bias", "ethics", "policy"]
+  - id: "mcp_a2a"
+    label: "MCP / A2A"
+    keywords: ["model context protocol", "MCP", "A2A", "agent-to-agent", "tool server"]
+  - id: "sapr_ai"
+    label: "САПР + AI"
+    keywords: ["CAD", "CAE", "BIM", "engineering", "design automation", "generative design"]
+  - id: "business"
+    label: "AI в бизнесе"
+    keywords: ["funding", "valuation", "acquisition", "enterprise", "deployment", "ROI"]
+
+scoring:
+  source_priority:
+    high: 3    # Anthropic, OpenAI, DeepMind blogs
+    medium: 2  # arxiv, HuggingFace, major tech
+    low: 1     # Reddit, newsletters
+  recency:
+    fresh_hours: 6
+    fresh_bonus: 2
+    recent_hours: 24
+    recent_bonus: 1
+  multi_source_threshold: 3
+  multi_source_bonus: 2
+  max_per_source_in_digest: 3
+
+sources:
+  reddit:
+    - name: "r/MachineLearning"
+      url: "https://www.reddit.com/r/MachineLearning/.rss"
+      feed_type: "rss"
+      priority: "low"
+    - name: "r/artificial"
+      url: "https://www.reddit.com/r/artificial/.rss"
+      feed_type: "rss"
+      priority: "low"
+    - name: "r/LocalLLaMA"
+      url: "https://www.reddit.com/r/LocalLLaMA/.rss"
+      feed_type: "rss"
+      priority: "low"
+
+  # twitter: disabled - all Nitter mirrors are dead (502/403 errors)
+  # Re-enable when a working Nitter alternative appears
+
+  newsletters:
+    - name: "The Batch"
+      url: "https://www.deeplearning.ai/the-batch/"
+      feed_type: "web_scraper"
+      priority: "medium"
+    - name: "MIT Tech Review AI"
+      url: "https://www.technologyreview.com/topic/artificial-intelligence/feed"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "Import AI"
+      url: "https://importai.substack.com/feed"
+      feed_type: "rss"
+      priority: "medium"
+
+  tech_media:
+    - name: "TechCrunch AI"
+      url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "The Verge AI"
+      url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "VentureBeat AI"
+      url: "https://venturebeat.com/category/ai/feed/"
+      feed_type: "rss"
+      priority: "medium"
+
+  aggregators:
+    - name: "HackerNews AI"
+      url: "https://hnrss.org/newest?q=AI+OR+LLM+OR+GPT+OR+Claude&points=50"
+      feed_type: "rss"
+      priority: "medium"
+
+  arxiv:
+    - name: "arxiv cs.AI"
+      url: "https://rss.arxiv.org/rss/cs.AI"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "arxiv cs.CL"
+      url: "https://rss.arxiv.org/rss/cs.CL"
+      feed_type: "rss"
+      priority: "medium"
+    - name: "arxiv cs.LG"
+      url: "https://rss.arxiv.org/rss/cs.LG"
+      feed_type: "rss"
+      priority: "medium"
+
+  blogs:
+    - name: "OpenAI Blog"
+      url: "https://openai.com/news/rss.xml"
+      feed_type: "rss"
+      priority: "high"
+    - name: "Anthropic Blog"
+      url: "https://www.anthropic.com/news"
+      feed_type: "web_scraper"
+      priority: "high"
+    - name: "Google DeepMind Blog"
+      url: "https://deepmind.google/blog/rss.xml"
+      feed_type: "rss"
+      priority: "high"
+    - name: "Hugging Face Blog"
+      url: "https://huggingface.co/blog/feed.xml"
+      feed_type: "rss"
+      priority: "medium"

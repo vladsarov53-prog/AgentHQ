@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: ai-news-bot
+    runtime: docker
+    dockerfilePath: ./ai-news-bot/Dockerfile
+    dockerContext: ./ai-news-bot
+    region: frankfurt
+    plan: free
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
