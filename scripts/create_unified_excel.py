@@ -11,7 +11,7 @@ from datetime import datetime, date
 import os
 
 # === КОНФИГУРАЦИЯ ===
-OUTPUT_PATH = r"D:\REDPEAK\AgentHQ\DATA\Дорожная карта проекта REDPEAK\RedPeak_Единый_план_2026_2028.xlsx"
+OUTPUT_PATH = r"D:\REDPEAK\Agent systems\AgentHQ\DATA\Дорожная карта проекта REDPEAK\RedPeak_Единый_план_2026_2028.xlsx"
 SOURCE_XLSX = r"C:\Users\sashatrash\OneDrive\Desktop\Генеральный_план_работы_Redpeak_v4.xlsx"
 
 # === СТИЛИ ===

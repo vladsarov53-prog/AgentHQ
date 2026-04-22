@@ -15,6 +15,9 @@ Google Research (17x error amplification without orchestration).
 import json
 import sys
 import re
+import io
+
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
 def _read_input():

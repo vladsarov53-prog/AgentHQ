@@ -16,6 +16,15 @@ operations/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 
+# Активные worktrees Claude Code (локальные ветки)
+.claude/worktrees/
+
+# Отчёты тест-фреймворка и артефакты
+.claude/tests/reports/
+
+# Лог сессии (локальный)
+SESSION_LOG.md
+
 # Бэкапы (хранятся локально, не нужны в git)
 .claude/agents/backups/
 
@@ -26,6 +35,10 @@ backup_memory.ps1
 ai-news-bot/data/
 ai-news-bot/.env
 ai-news-bot/.venv/
+
+# Node.js / MCP серверы
+node_modules/
+package-lock.json
 
 # Python
 __pycache__/
