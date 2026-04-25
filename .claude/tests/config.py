@@ -66,11 +66,22 @@ PROMPT_RED_FLAGS = [
 # === Hooks ===
 EXPECTED_HOOKS = {
     "PreToolUse": ["safety-guard.py"],
-    "PostToolUse": ["session-log.py", "lint-check.py"],
-    "SessionStart": ["vault-context.py", "context-recovery.py"],
+    "PostToolUse": [
+        "session-log.py",
+        "lint-check.py",
+        "agent-test-trigger.py",
+        "cost-attribution.py",
+        "memory-index.py",
+        "agent-trace.py",
+    ],
+    "SessionStart": [
+        "vault-context.py",
+        "context-recovery.py",
+        "mcp-health-check.py",
+    ],
     "Stop": ["verification-gate.py"],
     "SubagentStart": ["subagent-context.py"],
-    "UserPromptSubmit": ["prompt-enricher.py"],
+    "UserPromptSubmit": ["prompt-enricher.py", "planning-prompt.py"],
 }
 
 # === LLM-as-judge рубрика (Anthropic eval-driven) ===
