@@ -21,6 +21,10 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/prompt-enricher.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/planning-prompt.py\""
           }
         ]
       }
@@ -47,6 +51,37 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/lint-check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/agent-test-trigger.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/cost-attribution.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/memory-index.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/agent-trace.py\""
           }
         ]
       }
@@ -75,6 +110,10 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/context-recovery.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/mcp-health-check.py\""
           }
         ]
       }

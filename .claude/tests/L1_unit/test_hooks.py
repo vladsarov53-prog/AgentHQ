@@ -283,6 +283,193 @@ def run_all():
     for t in tests:
         results.append(run_test(*t))
 
+    # === mcp-health-check.py (NEW Этап 1.1) ===
+    # Хук должен:
+    # - exit 0 всегда (fail-open: ошибка не блокирует сессию)
+    # - выдавать additionalContext только при проблемах MCP
+    # - молчать при здоровой системе
+    tests = [
+        ("H-86", "mcp-health: empty stdin",
+         "mcp-health-check.py", "", 0, False),
+        ("H-87", "mcp-health: bad JSON stdin (graceful)",
+         "mcp-health-check.py", "broken{", 0, False),
+        ("H-88", "mcp-health: normal session_id input",
+         "mcp-health-check.py", '{"session_id":"t1"}', 0, False),
+        ("H-89", "mcp-health: large payload (no crash)",
+         "mcp-health-check.py", '{"x":"' + "y" * 5000 + '"}', 0, False),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
+    # === planning-prompt.py (NEW Этап 3.3) ===
+    # Хук должен:
+    # - exit 0 всегда (soft enforcement, не блокирует)
+    # - молчать на коротких/простых запросах (нет additionalContext)
+    # - выдавать warning на сложных (multi-step / cross-domain)
+    multi_step = '{"prompt":"сначала проверь договор с CAD-разработчиком, затем сверь сумму с бюджетом гранта, после этого подготовь отчёт"}'
+    cross_domain = '{"prompt":"мне нужен анализ договора с разработчиком и сверка по бюджету за квартал"}'
+    tests = [
+        ("H-PP-1", "planning: empty stdin",
+         "planning-prompt.py", "", 0, False),
+        ("H-PP-2", "planning: bad JSON",
+         "planning-prompt.py", "broken{", 0, False),
+        ("H-PP-3", "planning: short prompt (no warn)",
+         "planning-prompt.py", '{"prompt":"привет"}', 0, False),
+        ("H-PP-4", "planning: simple task (no warn)",
+         "planning-prompt.py", '{"prompt":"проверь баг в парсере"}', 0, False),
+        ("H-PP-5", "planning: multi-step (warn)",
+         "planning-prompt.py", multi_step, 0, True),
+        ("H-PP-6", "planning: cross-domain (warn)",
+         "planning-prompt.py", cross_domain, 0, True),
+        ("H-PP-7", "planning: user_prompt field accepted",
+         "planning-prompt.py",
+         '{"user_prompt":"проверь договор и сверь с бюджетом и подготовь акт затем отправь"}',
+         0, True),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
+    # === agent-trace.py (NEW Этап 3.1) ===
+    # Хук должен:
+    # - exit 0 всегда (observability не должна блокировать tool calls)
+    # - игнорировать пустые tool_name
+    # - sanitize sensitive paths (contracts/personal/, .env, .key)
+    # - sanitize secret-like content (api_key=, password=, bearer)
+    secret_payload = (
+        '{"tool_name":"Bash",'
+        '"tool_input":{"command":"export API_KEY=abc123secret"},'
+        '"tool_response":{}}'
+    )
+    sensitive_path_payload = (
+        '{"tool_name":"Read",'
+        '"tool_input":{"file_path":"D:/x/documents/contracts/personal/foo.pdf"},'
+        '"tool_response":{"content":"..."}}'
+    )
+    normal_payload = (
+        '{"tool_name":"Bash",'
+        '"tool_input":{"command":"ls -la"},'
+        '"tool_response":{"stdout":"output"}}'
+    )
+    tests = [
+        ("H-AT-1", "agent-trace: empty stdin",
+         "agent-trace.py", "", 0, False),
+        ("H-AT-2", "agent-trace: bad JSON",
+         "agent-trace.py", "broken{", 0, False),
+        ("H-AT-3", "agent-trace: empty tool_name",
+         "agent-trace.py", '{"tool_name":""}', 0, False),
+        ("H-AT-4", "agent-trace: normal Bash call",
+         "agent-trace.py", normal_payload, 0, False),
+        ("H-AT-5", "agent-trace: sensitive path redacted",
+         "agent-trace.py", sensitive_path_payload, 0, False),
+        ("H-AT-6", "agent-trace: secret content redacted",
+         "agent-trace.py", secret_payload, 0, False),
+        ("H-AT-7", "agent-trace: Task with subagent_type",
+         "agent-trace.py",
+         '{"tool_name":"Task","tool_input":{"subagent_type":"legal-agent","prompt":"x"},"tool_response":{"content":"OK"}}',
+         0, False),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
+    # === memory-index.py (NEW Этап 3.2) ===
+    # Хук должен:
+    # - exit 0 всегда (fail-open: ошибка не блокирует Write/Edit)
+    # - реагировать только на Write/Edit с file_path в auto-memory
+    # - игнорировать MEMORY.md (это индекс, не entity)
+    # - молча пропускать если venv_chroma ещё не установлен
+    auto_mem_path = "C:/Users/test/.claude/projects/X/memory/decision_test.md"
+    tests = [
+        ("H-MI-1", "memory-index: empty stdin",
+         "memory-index.py", "", 0, False),
+        ("H-MI-2", "memory-index: bad JSON",
+         "memory-index.py", "broken{", 0, False),
+        ("H-MI-3", "memory-index: not Write/Edit",
+         "memory-index.py",
+         '{"tool_name":"Read","tool_input":{"file_path":"' + auto_mem_path + '"}}',
+         0, False),
+        ("H-MI-4", "memory-index: file outside auto-memory",
+         "memory-index.py",
+         '{"tool_name":"Write","tool_input":{"file_path":"D:/random.md"}}',
+         0, False),
+        ("H-MI-5", "memory-index: not .md file",
+         "memory-index.py",
+         '{"tool_name":"Edit","tool_input":{"file_path":"C:/Users/x/.claude/projects/Y/memory/foo.txt"}}',
+         0, False),
+        ("H-MI-6", "memory-index: MEMORY.md ignored",
+         "memory-index.py",
+         '{"tool_name":"Write","tool_input":{"file_path":"C:/Users/x/.claude/projects/Y/memory/MEMORY.md"}}',
+         0, False),
+        ("H-MI-7", "memory-index: valid auto-memory file",
+         "memory-index.py",
+         '{"tool_name":"Edit","tool_input":{"file_path":"' + auto_mem_path + '"}}',
+         0, False),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
+    # === cost-attribution.py (NEW Этап 1.3) ===
+    # Хук должен:
+    # - exit 0 всегда (атрибуция не должна блокировать Task)
+    # - реагировать только на tool_name == "Task"
+    # - корректно обрабатывать отсутствие usage в tool_response
+    cost_payload = (
+        '{"tool_name":"Task",'
+        '"tool_input":{"subagent_type":"operations-agent",'
+        '"description":"weekly status","prompt":"составь план"},'
+        '"tool_response":{"content":"План на неделю готов."}}'
+    )
+    cost_with_usage = (
+        '{"tool_name":"Task",'
+        '"tool_input":{"subagent_type":"strategy-agent","prompt":"п"},'
+        '"tool_response":{"content":"OK","usage":{"input_tokens":150,'
+        '"output_tokens":80,"cache_read_input_tokens":1200}}}'
+    )
+    tests = [
+        ("H-97", "cost: empty stdin", "cost-attribution.py", "", 0, False),
+        ("H-98", "cost: bad JSON", "cost-attribution.py", "broken{", 0, False),
+        ("H-99", "cost: not Task tool", "cost-attribution.py",
+         '{"tool_name":"Edit","tool_input":{}}', 0, False),
+        ("H-100", "cost: Task without usage (estimated)",
+         "cost-attribution.py", cost_payload, 0, False),
+        ("H-101", "cost: Task with API usage",
+         "cost-attribution.py", cost_with_usage, 0, False),
+        ("H-102", "cost: missing subagent_type",
+         "cost-attribution.py",
+         '{"tool_name":"Task","tool_input":{},"tool_response":{}}', 0, False),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
+    # === agent-test-trigger.py (NEW Этап 1.2) ===
+    # Хук должен:
+    # - exit 0 всегда (предупреждение, не блокировка)
+    # - игнорировать tool_name != Edit/Write
+    # - игнорировать file_path вне .claude/agents, CLAUDE.md, .claude/hooks
+    # - не падать на бэкапах и тестовых файлах агентов
+    tests = [
+        ("H-90", "trigger: empty stdin",
+         "agent-test-trigger.py", "", 0, False),
+        ("H-91", "trigger: bad JSON",
+         "agent-test-trigger.py", "broken{", 0, False),
+        ("H-92", "trigger: not Edit/Write tool",
+         "agent-test-trigger.py",
+         '{"tool_name":"Read","tool_input":{"file_path":"x.md"}}', 0, False),
+        ("H-93", "trigger: irrelevant file path",
+         "agent-test-trigger.py",
+         '{"tool_name":"Edit","tool_input":{"file_path":"D:/random/file.txt"}}', 0, False),
+        ("H-94", "trigger: agent backup ignored",
+         "agent-test-trigger.py",
+         '{"tool_name":"Write","tool_input":{"file_path":"D:/x/.claude/agents/backups/legal-agent_2026.md"}}', 0, False),
+        ("H-95", "trigger: empty file_path",
+         "agent-test-trigger.py",
+         '{"tool_name":"Edit","tool_input":{}}', 0, False),
+        ("H-96", "trigger: self-trigger ignored",
+         "agent-test-trigger.py",
+         '{"tool_name":"Edit","tool_input":{"file_path":"D:/x/.claude/hooks/agent-test-trigger.py"}}', 0, False),
+    ]
+    for t in tests:
+        results.append(run_test(*t))
+
     return results
 
 

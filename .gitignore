@@ -1,50 +1,17 @@
-# Бизнес-данные и чувствительные документы
-DATA/
-documents/contracts/
-documents/contracts/personal/
-finance/
-legal/
-tax/
-
-# Память проекта (содержит факты, суммы, контакты)
-memory/
-
-# Операционные файлы (статусы, логи)
-operations/
-
-# Локальные настройки Claude Code
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
-
-# Активные worktrees Claude Code (локальные ветки)
-.claude/worktrees/
-
-# Отчёты тест-фреймворка и артефакты
-.claude/tests/reports/
-
-# Лог сессии (локальный)
-SESSION_LOG.md
-
-# Бэкапы (хранятся локально, не нужны в git)
-.claude/agents/backups/
-
-# PowerShell-скрипты с потенциально чувствительными путями
-backup_memory.ps1
-
-# AI News Bot runtime data
-ai-news-bot/data/
-ai-news-bot/.env
-ai-news-bot/.venv/
-
-# Node.js / MCP серверы
-node_modules/
-package-lock.json
+# Vector memory
+memory/chroma_db/
+.claude/venv_chroma/
+.claude/lib/**/__pycache__/
+.claude/lib/**/*.pyc
 
 # Python
-__pycache__/
+**/__pycache__/
 *.pyc
-*.egg-info/
 
-# Windows
-Thumbs.db
-desktop.ini
+# Operations runtime data (per-session, не коммитим)
+operations/auto_test_log.md
+operations/cost_attribution.jsonl
+
+# Runtime locks and local settings
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
