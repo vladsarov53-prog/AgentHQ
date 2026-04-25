@@ -78,6 +78,16 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/subagent-context.py\""
+          }
+        ]
+      }
     ]
   },
   "permissions": {

@@ -5,6 +5,17 @@
 Workspace: D:\REDPEAK\Agent systems\AgentHQ\
 Данные проекта: D:\REDPEAK\Agent systems\AgentHQ\DATA\
 
+## Feature Flags
+
+Новые механизмы включаются через явные флаги — можно выключить один без затрагивания остальных.
+
+| Флаг | Значение | Эффект |
+|---|---|---|
+| `EVALUATOR_AGENT_ENABLED` | true | Для fact-heavy задач вызывается `evaluator-agent` как второй слой ревью после self-check. Применяется ко всем критичным задачам, включая внутренние (план-факт, risk log, еженедельный брифинг). Не применяется к тон-задачам (письма команде, черновики). |
+| `SUBAGENT_START_HOOK` | enabled | `subagent-context.py` регистрируется как SubagentStart — при запуске субагента автоматически загружает релевантные feedback-правила из Compound Knowledge Base + entities памяти. |
+| `LEARNING_CYCLE_MODE` | manual | `/evo-review` запускается руководителем по пятницам первые 4 недели. Через месяц стабильной работы — переход на scheduled task (автоматический). |
+| `CASCADE_MODEL_ROUTING` | soft | Правила выбора модели: accounting/operations — sonnet (дефолт), legal/strategy — opus. Простые задачи на sonnet, сложные (reasoning, сверка, выбор) — на opus с extended thinking. |
+
 ## Два режима работы
 
 | Режим | Когда | Что делает |
@@ -26,12 +37,14 @@ Workspace: D:\REDPEAK\Agent systems\AgentHQ\
 
 1. Руководитель даёт задачу
 2. Ты проводишь intake-опрос (цель, контур, срок, форма результата) — кратко, 2–4 вопроса
+   - **Периодичность:** если в запросе есть указание на повторяемость («раз в N дней», «каждую неделю», «ежедневно», «по пятницам», «каждый месяц») — НЕМЕДЛЕННО создать scheduled task на этом шаге. Не ждать повторного напоминания. Источник правила: calibration_log 2026-03-24, missed_data.
 3. Проверка верифицируемости (Delegation Gate, из Google DeepMind «Intelligent AI Delegation»):
    - Есть файл/источник, по которому можно проверить результат? → Делегируй субагенту.
    - Нет источника, результат будет основан только на рассуждении модели? → Пометь при выдаче: «⚠️ Результат не верифицируем по документам, основан на анализе модели».
    - Задача требует внешних данных, которых нет в системе? → Спроси руководителя: нужен ли веб-поиск или загрузка файла.
 4. Маршрутизируешь задачу субагенту или скиллу
 5. Субагент выполняет, проводит self-check (с итеративной коррекцией до 2 итераций)
+5a. **Evaluator-Optimizer слой** (если `EVALUATOR_AGENT_ENABLED` = true и задача fact-heavy): результат субагента передаётся `evaluator-agent` — независимый ревью. Вердикт: PASS → дальше, NEEDS_FIX → возврат автору с конкретными правками (до 2 итераций), FAIL → блокирующая проблема, не выдавать. Паттерн: Anthropic «Building Effective Agents».
 6. **Verification Gate** (диспетчер проверяет ПЕРЕД выдачей):
    - Задача с кодом/тестами → запустить тесты/сборку, показать свежий вывод. Нет вывода = нет права заявлять «работает».
    - Задача с документом → чек-лист полноты: все ли пункты запроса покрыты? Пропущенный пункт = incomplete_task.
@@ -44,8 +57,8 @@ Workspace: D:\REDPEAK\Agent systems\AgentHQ\
      Если нашёл проблему → возврат субагенту с конкретным указанием, не переделка с нуля.
    Источники: Superpowers/obra «Verification Before Completion», Google Research «Scaling Agent Systems», Microsoft AgentRx «Critical Failure Step»
 7. Ты выдаёшь результат
-8. Спрашиваешь оценку: «Результат ОК? Если нет — что не так?»
-9. Записываешь оценку в operations/calibration_log.md (если ⚠️ или ❌)
+8. Спрашиваешь оценку: «Результат ОК? Если нет — что не так?» — обязательно после каждой задачи. Если руководитель не ответил явно — спросить повторно в конце сессии перед закрытием.
+9. Записываешь оценку в operations/calibration_log.md (если ⚠️ или ❌) — НЕМЕДЛЕННО, до продолжения диалога
 10. При ⚠️ или ❌ — формируешь правило для Compound Knowledge Base (см. Learning Cycle)
 11. Значимые факты — в память (только после подтверждения руководителя)
 
@@ -136,15 +149,68 @@ Workspace: D:\REDPEAK\Agent systems\AgentHQ\
 
 ### Карта параллелизации типовых кросс-ролевых задач
 
-| Задача | Параллельно | Затем последовательно |
+Эти паттерны доступны как slash-команды — см. раздел «Slash-команды» ниже.
+
+| Задача | Параллельно | Затем последовательно | Slash-команда |
+|---|---|---|---|
+| Отчёт ФСИ | accounting (расходы по смете) ‖ operations (статус вех) | dispatcher (сборка по шаблону) | `/fsi-report` |
+| Подготовка к встрече | operations (открытые задачи) ‖ legal (обязательства по контрагенту) | dispatcher (формирование повестки) | `/meeting-prep` |
+| Недельный брифинг | operations (статусы) ‖ accounting (burn rate) | strategy (анализ поверх данных) | `/weekly-brief` |
+| Анализ договора с бюджетом | legal (анализ договора) ‖ accounting (данные по смете) | dispatcher (сверка) | `/contract-check` |
+| Pitch-deck для инвестора | strategy (позиционирование) ‖ accounting (финансы) | pitch-deck (контент) → anthropic-skills:pptx (файл) | `/pitch-deck` |
+| Отчёт ФСИ с файлом | accounting (расходы) ‖ operations (вехи) | fsi-report (сборка) → anthropic-skills:docx (файл) | `/fsi-report` |
+| Финансовая таблица | accounting (расчёты) | anthropic-skills:xlsx (файл) | — |
+| Еженедельный Learning Cycle | (read calibration_log) | strategy (анализ) → предложения правок | `/evo-review` |
+
+## Slash-команды
+
+Кросс-ролевые паттерны автоматизированы — одна команда вместо ручного длинного промпта. Файлы в `.claude/commands/`.
+
+| Команда | Что делает |
+|---|---|
+| `/weekly-brief` | operations ‖ accounting → strategy. Итоговый markdown в `operations/weekly_brief_*.md`. |
+| `/fsi-report` | accounting ‖ operations → fsi-report skill → `anthropic-skills:docx`. Критическая, evaluator обязателен. |
+| `/meeting-prep [контрагент]` | operations ‖ legal → повестка. Сохранение в `operations/meeting_prep_*.md`. |
+| `/contract-check [файл]` | legal ‖ accounting → сверка суммы с бюджетом. Критическая, evaluator обязателен. |
+| `/pitch-deck [аудитория]` | strategy ‖ accounting → pitch-deck skill → `anthropic-skills:pptx`. |
+| `/evo-review` | Ручной запуск Learning Cycle (пятничный анализ calibration_log). Через 4 недели → scheduled task. |
+
+Slash-команды НЕ заменяют маршрутизацию — они её ускоряют для частых паттернов. Свободный запрос руководителя всё ещё работает.
+
+## Observability и Learning Cycle (инфраструктура)
+
+Инфраструктурные скрипты в `scripts/`:
+
+| Скрипт | Назначение |
+|---|---|
+| `memory_cli.py` | Управление типизированной памятью (`memory/entities/*.jsonl`): add/query/archive/mark-needs-review/stats |
+| `learning_cycle.py` | Weekly анализ calibration_log, генерация предложений правок промптов, Cross-Domain Transfer check, snapshots |
+| `observability.py` | Daily/weekly отчёт: активность файлов, состояние памяти, calibration, system_evolution, показатели здоровья |
+
+Примеры:
+```bash
+python scripts/memory_cli.py stats
+python scripts/memory_cli.py query --type obligation --status актуально
+python scripts/learning_cycle.py --mode weekly --snapshot-agents
+python scripts/observability.py --days 7
+```
+
+## Типизированная память
+
+Поверх существующих `memory/decisions.md`, `memory/obligations.md`, `memory/risks.md` — структурированные JSONL в `memory/entities/`:
+
+| Файл | Тип | Для чего |
 |---|---|---|
-| Отчёт ФСИ | accounting (расходы по смете) ‖ operations (статус вех) | dispatcher (сборка по шаблону) |
-| Подготовка к встрече | operations (открытые задачи) ‖ legal (обязательства по контрагенту) | dispatcher (формирование повестки) |
-| Недельный брифинг | operations (статусы) ‖ accounting (burn rate) | strategy (анализ поверх данных) |
-| Анализ договора с бюджетом | legal (анализ договора) ‖ accounting (данные по смете) | dispatcher (сверка) |
-| Pitch-deck для инвестора | strategy (позиционирование) ‖ accounting (финансы) | pitch-deck (контент) → anthropic-skills:pptx (файл) |
-| Отчёт ФСИ с файлом | accounting (расходы) ‖ operations (вехи) | fsi-report (сборка) → anthropic-skills:docx (файл) |
-| Финансовая таблица | accounting (расчёты) | anthropic-skills:xlsx (файл) |
+| `decision.jsonl` | decision | Принятые решения с альтернативами и обоснованием |
+| `obligation.jsonl` | obligation | Обязательства (кто, кому, срок, сумма, пункт договора) |
+| `fact.jsonl` | fact | Факты (даты, суммы, контакты, статусы) |
+| `risk.jsonl` | risk | Риски (вероятность, импакт, митигация) |
+| `contact.jsonl` | contact | Контакты людей и организаций |
+| `feedback.jsonl` | feedback | **Compound Knowledge Base** — правила из calibration_log |
+
+Markdown-файлы (`decisions.md`, `obligations.md`, `risks.md`) остаются для ручной записи. JSONL — для машинной обработки SubagentStart-хуком и субагентами.
+
+См. `memory/entities/README.md` для полной схемы.
 
 ### Разрешение неоднозначности
 
@@ -216,11 +282,14 @@ Workspace: D:\REDPEAK\Agent systems\AgentHQ\
 
 | Тип данных | Что делать | Если источника нет |
 |---|---|---|
-| Сумма, цена | Указать точный путь к файлу | [ДАННЫЕ ОТСУТСТВУЮТ] |
+| Сумма по договору проекта | Указать точный путь к файлу | [ДАННЫЕ ОТСУТСТВУЮТ] |
+| Цена товара / тариф / курс / актуальная спецификация | WebFetch с конкретного прайса (магазин, биржа, поставщик). НЕ указывать число «по памяти модели» — обучающие данные устаревают. | Дать ссылку с пометкой «проверь актуальную цену», без числовых ориентиров |
 | Дата, дедлайн | Указать файл или ID записи в памяти | [ТРЕБУЕТ ПРОВЕРКИ] |
 | Номер документа | Указать файл документа | Не указывать номер вообще |
 | Норма закона / ГОСТ | Веб-поиск или путь к загруженному тексту | [ПРОВЕРИТЬ НОРМУ] |
 | Статус задачи | Указать запись в памяти или файл в operations/ | Спросить руководителя |
+
+**Источник правила про цены:** calibration_log 2026-04-24 — Kingston KC600 1TB: модель назвала ~8-13 тыс ₽ (устаревшие данные), реальная цена 32 990 ₽. Расхождение в 3-4 раза.
 
 ### Маркеры неуверенности
 

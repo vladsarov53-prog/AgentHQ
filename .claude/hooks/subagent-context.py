@@ -13,6 +13,12 @@ import json
 import sys
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 
 def _read_input():
     try:
@@ -49,6 +55,80 @@ def get_agent_errors(project_root, agent_name):
         return "\n".join(errors[-5:])
     except OSError:
         return ""
+
+
+def get_feedback_rules(project_root, agent_name, limit=10):
+    """Загружает feedback-правила из Compound Knowledge Base.
+
+    Источник: memory/entities/feedback.jsonl
+    Паттерн: OpenAI Self-Evolving Agents — каждая ошибка превращается в правило.
+    """
+    fb_path = project_root / "memory" / "entities" / "feedback.jsonl"
+    if not fb_path.exists():
+        return ""
+    rules = []
+    try:
+        with open(fb_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("status") != "актуально":
+                    continue
+                content = rec.get("content") or {}
+                target = content.get("subagent", "")
+                if target != "all" and agent_name.lower() not in target.lower():
+                    continue
+                rule = content.get("rule", "")
+                category = content.get("category", "")
+                if rule:
+                    rules.append(f"  - [{category}] {rule}")
+    except OSError:
+        return ""
+    if not rules:
+        return ""
+    return (
+        "Правила из Compound Knowledge Base (не повторяй ошибок):\n"
+        + "\n".join(rules[:limit])
+    )
+
+
+def get_relevant_entities(project_root, agent_name, limit=3):
+    """Загружает топ релевантных entities из памяти для субагента."""
+    ent_dir = project_root / "memory" / "entities"
+    if not ent_dir.exists():
+        return ""
+    found = []
+    for t in ("obligation", "decision", "risk"):
+        path = ent_dir / f"{t}.jsonl"
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if rec.get("status") != "актуально":
+                        continue
+                    rel = rec.get("subagent_relevance") or []
+                    if agent_name.lower() in [r.lower() for r in rel] or "all" in rel:
+                        summary = rec.get("summary", "")
+                        if summary:
+                            found.append(f"  - [{t}] {summary}")
+        except OSError:
+            continue
+    if not found:
+        return ""
+    return "Релевантные записи памяти:\n" + "\n".join(found[:limit])
 
 
 AGENT_CONTEXT = {
@@ -155,13 +235,23 @@ def main():
     elif "general" in AGENT_CONTEXT:
         context_parts.append(AGENT_CONTEXT["general"])
 
-    # 2. Прошлые ошибки (Compound Knowledge Base)
+    # 2. Прошлые ошибки (сырой calibration_log)
     agent_name = matched or agent_type or "dispatcher"
     errors = get_agent_errors(project_root, agent_name)
     if errors:
         context_parts.append(
             f"Прошлые ошибки этого субагента (не повторяй):\n{errors}"
         )
+
+    # 3. Compound Knowledge Base — накопленные правила
+    rules = get_feedback_rules(project_root, agent_name)
+    if rules:
+        context_parts.append(rules)
+
+    # 4. Релевантные entities из памяти
+    entities = get_relevant_entities(project_root, agent_name)
+    if entities:
+        context_parts.append(entities)
 
     if context_parts:
         result = {
