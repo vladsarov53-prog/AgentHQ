@@ -97,6 +97,10 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/output-quality-gate.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/screenshot-gate.py\""
           }
         ]
       }
