@@ -65,7 +65,8 @@ Workspace: D:\REDPEAK\Agent systems\AgentHQ\
      |---|---|
      | UI/фронтенд (HTML, React, лендинг) | webapp-testing (Playwright) или mcp__Claude_in_Chrome__computer |
      | Веб-задача (Gmail, hh.ru, форма на сайте) | mcp__Claude_in_Chrome__computer → screenshot |
-     | Запущенное приложение (иконка, позиция элемента, внешний вид, без создания файла) | webapp-testing (Playwright) если веб-приложение; mcp__Claude_in_Chrome__computer если в браузере |
+     | Запущенное приложение в браузере (иконка, позиция, внешний вид) | webapp-testing (Playwright) или mcp__Claude_in_Chrome__computer |
+     | Нативное Windows-приложение (трей, панель задач, рабочий стол) | `pyautogui.screenshot()` или `PIL.ImageGrab.grab()` через Bash |
      | DOCX | anthropic-skills:docx → рендер → mcp__Claude_Preview__preview_screenshot |
      | PDF | mcp__plugin_pdf-viewer_pdf__display_pdf |
      | PPTX | anthropic-skills:pptx → export → screenshot |

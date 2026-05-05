@@ -56,7 +56,11 @@ UI_KEYWORDS = re.compile(
     r"\bэкран|"
     r"визуальн|"
     r"приложени|в программе|"
-    r"запущен|отображен|отображает)",
+    r"запущен|отображен|отображает|"
+    # Нативные Windows-приложения
+    r"нативн|десктопн|рабочий стол|"
+    r"трей|системный лоток|панель задач|"
+    r"taskbar|\btray\b)",
     re.IGNORECASE,
 )
 WEB_KEYWORDS = re.compile(
@@ -107,10 +111,18 @@ SCREENSHOT_TOOL_PATTERNS = [
 
 # Содержимое Bash command, доказывающее screenshot
 SCREENSHOT_BASH_PATTERNS = [
+    # Web / Playwright
     re.compile(r"page\.screenshot\(", re.IGNORECASE),
-    re.compile(r"\bscreencapture\b", re.IGNORECASE),
     re.compile(r"playwright", re.IGNORECASE),
     re.compile(r"\.screenshot\(", re.IGNORECASE),
+    # macOS
+    re.compile(r"\bscreencapture\b", re.IGNORECASE),
+    # Нативные Windows-приложения
+    re.compile(r"pyautogui", re.IGNORECASE),          # pyautogui.screenshot()
+    re.compile(r"ImageGrab\.grab", re.IGNORECASE),    # PIL.ImageGrab.grab()
+    re.compile(r"\bmss\b", re.IGNORECASE),             # mss library
+    re.compile(r"CopyFromScreen", re.IGNORECASE),     # System.Drawing (PowerShell)
+    re.compile(r"PrintWindow", re.IGNORECASE),        # Win32 PrintWindow API
 ]
 
 # Явный маркер отказа от скриншота (разрешает прохождение)
@@ -137,7 +149,11 @@ LABELS = {
 }
 
 INSTRUCTIONS = {
-    "ui": "webapp-testing (Playwright page.screenshot) или mcp__Claude_in_Chrome__computer",
+    "ui": (
+        "webapp-testing (Playwright page.screenshot) или mcp__Claude_in_Chrome__computer "
+        "для веб/браузерных приложений; "
+        "pyautogui.screenshot() или PIL.ImageGrab.grab() для нативных Windows-приложений"
+    ),
     "web": "mcp__Claude_in_Chrome__computer (screenshot вкладки)",
     "docx": "anthropic-skills:docx (рендер) + mcp__Claude_Preview__preview_screenshot",
     "pdf": "mcp__plugin_pdf-viewer_pdf__display_pdf",
