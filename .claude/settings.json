@@ -101,6 +101,10 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/screenshot-gate.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/chat-archive-push.py\""
           }
         ]
       }
@@ -155,7 +159,8 @@
       "Write(memory/knowledge_graph.json)",
       "Write(memory/backups/**)",
       "Write(memory/archive/**)",
-      "Write(documents/comms/**)"
+      "Write(documents/comms/**)",
+      "Write(chat-archives/**)"
     ],
     "deny": [
       "Write(CLAUDE.md)",
