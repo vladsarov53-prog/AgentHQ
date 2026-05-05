@@ -57,7 +57,7 @@ def get_agent_errors(project_root, agent_name):
         return ""
 
 
-def get_feedback_rules(project_root, agent_name, limit=10):
+def get_feedback_rules(project_root, agent_name, limit=20):
     """Загружает feedback-правила из Compound Knowledge Base.
 
     Источник: memory/entities/feedback.jsonl
@@ -97,6 +97,25 @@ def get_feedback_rules(project_root, agent_name, limit=10):
     )
 
 
+def _agent_matches(agent_name, rel_list):
+    """
+    Матчинг устойчив к укорочениям: 'strateg' матчится со 'strategy',
+    'accounting-agent' с 'accounting' и наоборот.
+    """
+    if not rel_list:
+        return False
+    if "all" in [r.lower() for r in rel_list]:
+        return True
+    a = (agent_name or "").lower()
+    if not a:
+        return False
+    for r in rel_list:
+        rl = r.lower()
+        if a == rl or a.startswith(rl) or rl.startswith(a):
+            return True
+    return False
+
+
 def get_relevant_entities(project_root, agent_name, limit=3):
     """Загружает топ релевантных entities из памяти для субагента."""
     ent_dir = project_root / "memory" / "entities"
@@ -120,7 +139,7 @@ def get_relevant_entities(project_root, agent_name, limit=3):
                     if rec.get("status") != "актуально":
                         continue
                     rel = rec.get("subagent_relevance") or []
-                    if agent_name.lower() in [r.lower() for r in rel] or "all" in rel:
+                    if _agent_matches(agent_name, rel):
                         summary = rec.get("summary", "")
                         if summary:
                             found.append(f"  - [{t}] {summary}")

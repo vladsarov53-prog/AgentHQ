@@ -114,6 +114,51 @@ ROUTE_MAP = [
             " Используй веб-поиск для актуальных данных"
         ),
     },
+    {
+        "patterns": [
+            r"прошл[аойы].*сесси",
+            r"прошл[ыо][йм].*чат",
+            r"в прошл[ыо]м",
+            r"вспомни",
+            r"что (?:мы\s+)?обсужда",
+            r"последн.*сесси",
+            r"последн.*чат",
+            r"раньше говорил",
+        ],
+        "hint": (
+            "Транскрипты прошлых сессий лежат в ДВУХ местах: "
+            "(1) основная: C:/Users/sashatrash/.claude/projects/"
+            "D--REDPEAK-Agent-systems-AgentHQ/*.jsonl, "
+            "(2) worktree-сессии: C:/Users/sashatrash/.claude/projects/"
+            "D--REDPEAK-Agent-systems-AgentHQ--claude-worktrees-*/*.jsonl. "
+            "Worktree-сессии лежат в ОТДЕЛЬНЫХ папках — для поиска по теме "
+            "используй Grep с glob='**/*.jsonl' по всему ~/.claude/projects/, "
+            "иначе пропустишь часть истории. JSONL-формат, поля type и "
+            "message.content. Никакой хук не блокирует — Read(**) разрешён."
+        ),
+    },
+    {
+        "patterns": [
+            r"\bVPN\b", r"xray", r"reality\b", r"shadowsocks", r"wireguard",
+            r"Nextcloud", r"Yandex[.\s_-]?Cloud", r"Yandex Functions",
+            r"Beget", r"Railway", r"хостинг", r"деплой\b", r"deploy",
+            r"SSH\b", r"конфиг.*сервер", r"настройк.*сервер",
+            r"инфраструктур", r"systemd", r"Docker[ -]?compose", r"docker compose",
+            r"белый\s+список", r"whitelist",
+        ],
+        "hint": (
+            "Темы инфраструктуры (VPN, серверы, Nextcloud, хостинги, "
+            "Yandex.Cloud) часто обсуждались в worktree-сессиях, а не в "
+            "основной. Если ответ упирается в факты вида ты сам говорил / "
+            "мы это уже настраивали — искать в "
+            "C:/Users/sashatrash/.claude/projects/"
+            "D--REDPEAK-Agent-systems-AgentHQ--claude-worktrees-*/*.jsonl. "
+            "Используй Grep glob='**/*.jsonl' по всему ~/.claude/projects/. "
+            "Сводка инфры в memory/MEMORY.md (project_vpn_server, "
+            "project_bot_hosting). При установке нового стека — фиксировать "
+            "в memory entity сразу, не дожидаться следующего аудита."
+        ),
+    },
 ]
 
 

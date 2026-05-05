@@ -10,7 +10,8 @@
       "command": "node",
       "args": [
         "D:/REDPEAK/Agent systems/AgentHQ/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-        "D:/REDPEAK/Agent systems/AgentHQ"
+        "D:/REDPEAK/Agent systems/AgentHQ",
+        "D:/REDPEAK/Agent systems/EngineerWork"
       ]
     }
   },
@@ -124,6 +125,16 @@
           {
             "type": "command",
             "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/subagent-context.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"D:/REDPEAK/Agent systems/AgentHQ/.claude/hooks/evaluator-verdict-logger.py\""
           }
         ]
       }
