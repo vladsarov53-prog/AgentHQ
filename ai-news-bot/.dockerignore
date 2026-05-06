@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+tests/
+.env
+.pytest_cache/
+*.db
+*.db-wal
+*.db-shm
+start_bot.bat
+start_bot_hidden.vbs

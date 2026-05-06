@@ -1,27 +1,17 @@
-# Бизнес-данные и чувствительные документы
-DATA/
-documents/contracts/
-documents/contracts/personal/
-finance/
-legal/
-tax/
+# Vector memory
+memory/chroma_db/
+.claude/venv_chroma/
+.claude/lib/**/__pycache__/
+.claude/lib/**/*.pyc
 
-# Память проекта (содержит факты, суммы, контакты)
-memory/
+# Python
+**/__pycache__/
+*.pyc
 
-# Операционные файлы (статусы, логи)
-operations/
+# Operations runtime data (per-session, не коммитим)
+operations/auto_test_log.md
+operations/cost_attribution.jsonl
 
-# Локальные настройки Claude Code
-.claude/settings.local.json
+# Runtime locks and local settings
 .claude/scheduled_tasks.lock
-
-# Бэкапы (хранятся локально, не нужны в git)
-.claude/agents/backups/
-
-# PowerShell-скрипты с потенциально чувствительными путями
-backup_memory.ps1
-
-# Windows
-Thumbs.db
-desktop.ini
+.claude/settings.local.json
